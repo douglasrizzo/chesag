@@ -1,0 +1,13 @@
+[project]
+name = "chesag"
+version = "0.1.0"
+description = "Chess-playing agents written in Python"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "cachetools>=6.1.0",
+  "chess>=1.11.2",
+  "numpy>=2.3.2",
+  "pyqt6>=6.9.1",
+  "tqdm>=4.67.1",
+]
