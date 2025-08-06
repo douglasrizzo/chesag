@@ -21,13 +21,9 @@ class BaseAgent(ABC):
         A Move object representing the agent's chosen move.
     """
 
-  def close(self):
+  def close(self) -> None:
     pass
 
   def __str__(self) -> str:
     """Return a string representation of the agent."""
     return self.__class__.__name__
-
-  def __repr__(self) -> str:
-    """Return a detailed string representation of the agent."""
-    return f"{self.__class__.__name__}()"

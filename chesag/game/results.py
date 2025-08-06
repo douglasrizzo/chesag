@@ -52,16 +52,21 @@ class GameResult:
     """Print the result of a single game."""
     # Determine who won from player perspective
     player1_result = self.player1_result
-    if player1_result == "1-0":
-      result_str = "Player 1 wins"
-    elif player1_result == "0-1":
-      result_str = "Player 2 wins"
-    elif player1_result == "1/2-1/2":
-      result_str = "Draw"
+    if player1_result in {"1-0", "0-1"}:
+      if player1_result == "1-0":
+        winner_color = self.player1_color.capitalize()
+        winner_player = 1
+        winner_agent = self.player1_agent
+      else:
+        winner_color = self.player2_color.capitalize()
+        winner_player = 2
+        winner_agent = self.player2_agent
+      result_str = f"Player {winner_player}/{winner_color}/{winner_agent} wins"
     else:
-      result_str = "Unfinished"
+      if self.result == "1/2-1/2":
+        result_str = "Draw"
+      else:
+        result_str = "Unfinished"
+      result_str += f" - P1 ({self.player1_agent}) as {self.player1_color}"
 
-    return (
-      f"{result_str} ({self.result}) - "
-      f"P1 as {self.player1_color}, {self.moves} moves, {self.duration:.1f}s - {self.termination_reason}"
-    )
+    return f"{result_str}, {self.moves} moves, {self.duration:.1f}s - {self.termination_reason}"

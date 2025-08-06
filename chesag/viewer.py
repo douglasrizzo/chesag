@@ -26,18 +26,28 @@ class ChessWindow(QDialog):
     # Create layout
     layout = QVBoxLayout()
 
-    self.status_label = QLabel("Game Status: Ready")
-    self.status_label.setFont(QFont("Arial", 12))
-    layout.addWidget(self.status_label)
+    label_font = QFont("Arial", 12)
 
-    # Add SVG widget for the chess board
+    self.players_label = QLabel("")
+    self.players_label.setFont(label_font)
+
+    self.game_label = QLabel("Game Status: Ready")
+    self.game_label.setFont(label_font)
+
     self.svg_widget = QSvgWidget()
     self.svg_widget.setMinimumSize(580, 580)
+
+    layout.addWidget(self.players_label)
+    layout.addWidget(self.game_label)
     layout.addWidget(self.svg_widget)
+
+    layout.setStretchFactor(self.players_label, 0)
+    layout.setStretchFactor(self.game_label, 0)
+    layout.setStretchFactor(self.svg_widget, 1)
 
     self.setLayout(layout)
 
-  def update_board(self, board: ExtendedBoard | None = None):
+  def update_board(self, board: ExtendedBoard | None = None, white_info: str = "", black_info: str = ""):
     """Update the displayed chess board."""
     if board is None:
       board = ExtendedBoard()
@@ -61,15 +71,18 @@ class ChessWindow(QDialog):
         status = "Game Over: Draw!"
     else:
       turn = "White" if board.turn else "Black"
+
+      extra = ""
       if board.is_check():
         extra = "CHECK"
       elif board.is_checkmate():
         extra = "CHECKMATE"
-      else:
-        extra = ""
-      status = f"Turn: {turn} {extra} | Move: {board.fullmove_number}"
+      if len(extra) > 0:
+        extra = " | " + extra
+      status = f"Turn: {turn} | Move: {board.fullmove_number}{extra}"
 
-    self.status_label.setText(status)
+    self.players_label.setText(f"White: {white_info} | Black: {black_info}")
+    self.game_label.setText(status)
 
     # Force repaint
     self.repaint()
@@ -102,10 +115,10 @@ class ChessViewer:
 
     return self.window
 
-  def update_board(self, board: Board):
+  def update_board(self, board: Board, white_info: str, black_info: str):
     """Update the chess board display."""
     if self.window is not None:
-      self.window.update_board(board)
+      self.window.update_board(board, white_info, black_info)
       # Process events to update the display
       if self.app is not None:
         self.app.processEvents()

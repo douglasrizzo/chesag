@@ -1,9 +1,10 @@
+from chess import Move
+
 from chesag.agents import BaseAgent
 from chesag.agents.mcts.algorithm import MCTSSearcher
 from chesag.agents.mcts.move_selection import MoveSelectionStrategy
 from chesag.chess import ExtendedBoard
 from chesag.logging import get_logger
-from chess import Move
 
 logger = get_logger()
 

@@ -24,12 +24,12 @@ class ExtendedBoard(chess.Board):
     """Convert chess result string to numeric value from current player's perspective."""
     result = self.result()
     if result in {"*", "1/2-1/2"}:
-      return 0.5
+      return 0.0
     if result == "1-0":
-      return 1.0 if self.turn else 0.0
+      return 1.0 if self.turn else -1.0
     if result == "0-1":
-      return 0.0 if self.turn else 1.0
-    return 0.5
+      return -1.0 if self.turn else 1.0
+    return 0.0
 
   def material_balance(self) -> float:
     """Calculate material balance from white's perspective."""

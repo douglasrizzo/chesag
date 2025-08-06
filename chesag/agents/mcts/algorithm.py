@@ -7,13 +7,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from cachetools import LRUCache
+
 from chesag.agents.mcts.node import Node
 from chesag.logging import get_logger
 
 if TYPE_CHECKING:
+  from chess import Board, Move
+
   from chesag.agents.mcts.move_selection import MoveSelectionStrategy
   from chesag.chess import ExtendedBoard
-  from chess import Board, Move
 
 logger = get_logger()
 
@@ -50,7 +52,7 @@ class MCTSSearcher:
   def load_cache() -> LRUCache[str, CachedNode]:
     if not MCTSSearcher.cache_file.exists():
       logger.info("Cache file not found, creating new cache")
-      return LRUCache(maxsize=20000)
+      return LRUCache(maxsize=500000)
     with MCTSSearcher.cache_file.open("rb") as f:
       cache: LRUCache[str, CachedNode] = pickle.load(f)
       logger.info("Cached transposition table loaded from file %s with %d entries", MCTSSearcher.cache_file, len(cache))
@@ -60,7 +62,8 @@ class MCTSSearcher:
     with MCTSSearcher.cache_file.open("wb") as f:
       if self.transposition_table is not None:
         pickle.dump(self.transposition_table, f)
-        logger.info(
+        logger.log(
+          18,
           "Cached transposition table saved to file %s (%d entries)",
           MCTSSearcher.cache_file,
           len(self.transposition_table),

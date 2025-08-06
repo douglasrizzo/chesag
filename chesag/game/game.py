@@ -41,7 +41,7 @@ class Game:
 
     # Initialize viewer if provided
     if self.viewer is not None:
-      self.viewer.update_board(self.board)
+      self.viewer.update_board(self.board, str(self.white_agent), str(self.black_agent))
       time.sleep(self.move_delay)
 
     # Create progress bar for this game
@@ -77,5 +77,5 @@ class Game:
 
     # Update viewer after black's move
     if self.viewer is not None:
-      self.viewer.update_board(self.board)
+      self.viewer.update_board(self.board, str(self.white_agent), str(self.black_agent))
       time.sleep(self.move_delay)
