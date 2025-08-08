@@ -1,10 +1,10 @@
 import time
 
 import chess
+from chess import Board, Move
 from tqdm import tqdm
 
 from chesag.agents import BaseAgent
-from chesag.chess import ExtendedBoard
 from chesag.game.results import GameResult
 from chesag.viewer import ChessViewer
 
@@ -22,7 +22,7 @@ class Game:
     move_delay: float = 0.0,
   ) -> None:
     """Initialize a new game between two agents."""
-    self.board = ExtendedBoard(fen=fen or chess.STARTING_FEN)
+    self.board = Board(fen=fen or chess.STARTING_FEN)
     self.moves = 0
     self.start_time = time.time()
     self.move_delay = move_delay
@@ -46,22 +46,33 @@ class Game:
 
     # Create progress bar for this game
     game_desc = f"Game {game_num}"
-    pbar = tqdm(unit=" halfmoves", desc=game_desc, leave=False)
+    pbar = tqdm(unit="halfmove", desc=game_desc, leave=False)
 
     start_time = time.time()
     side_to_move = self.board.turn
     outcome = None
-    while outcome is None:
-      self.make_move(side_to_move)
-      side_to_move = not side_to_move
+    resigned = False
+    while outcome is None and not resigned:
+      resigned = not bool(self.make_move(side_to_move))
+      if resigned:
+        break
       pbar.update(1)
-      outcome = self.board.extended_outcome()
+      outcome = self.board.outcome()
+      side_to_move = not side_to_move
     pbar.close()
     duration = time.time() - start_time
-    termination_reason = outcome.termination.name
+
+    if resigned:
+      result = "0-1" if side_to_move else "1-0"
+      termination_reason = "RESIGNATION"
+      winner_agent = self.black_agent if side_to_move else self.white_agent
+      winner_agent.win_by_resignation(self.board)
+    else:
+      result = outcome.result()
+      termination_reason = outcome.termination.name
 
     return GameResult(
-      result=outcome.result(),
+      result=result,
       moves=self.board.fullmove_number,
       duration=duration,
       player1_agent=str(self.white_agent if self.player1_is_white else self.black_agent),
@@ -71,7 +82,17 @@ class Game:
       termination_reason=termination_reason,
     )
 
-  def make_move(self, color: chess.Color):
+  def make_move(self, color: chess.Color) -> Move:
+    """Tell player of the given color to make a move.
+
+    Parameters
+    ----------
+      color: The color of the player to make a move.
+
+    Returns
+    -------
+      The move made by the player.
+    """
     move = self.white_agent.get_move(self.board) if color == chess.WHITE else self.black_agent.get_move(self.board)
     self.board.push(move)
 
@@ -79,3 +100,5 @@ class Game:
     if self.viewer is not None:
       self.viewer.update_board(self.board, str(self.white_agent), str(self.black_agent))
       time.sleep(self.move_delay)
+
+    return move

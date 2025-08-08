@@ -9,13 +9,13 @@ from typing import TYPE_CHECKING
 from cachetools import LRUCache
 
 from chesag.agents.mcts.node import Node
+from chesag.evaluation import symmetric_evaluation
 from chesag.logging import get_logger
 
 if TYPE_CHECKING:
   from chess import Board, Move
 
   from chesag.agents.mcts.move_selection import MoveSelectionStrategy
-  from chesag.chess import ExtendedBoard
 
 logger = get_logger()
 
@@ -84,7 +84,7 @@ class MCTSSearcher:
     return legal_moves
 
   @staticmethod
-  def should_return_single_move(board: ExtendedBoard) -> tuple[Move, float] | None:
+  def should_return_single_move(board: Board) -> tuple[Move, float] | None:
     """Return move immediately if only one legal move exists."""
     legal_moves = MCTSSearcher.get_legal_moves(board)
 
@@ -93,12 +93,12 @@ class MCTSSearcher:
       next_board = board.copy()
       next_board.push(legal_moves[0])
       logger.debug("Single move found: %s", legal_moves[0])
-      return legal_moves[0], next_board.evaluation()
+      return legal_moves[0], MCTSSearcher.evaluation(next_board)
 
     # If there are multiple legal moves, return None
     return None
 
-  def create_root_node(self, board: ExtendedBoard) -> Node:
+  def create_root_node(self, board: Board) -> Node:
     """Create and initialize root node."""
     root = Node(board=board.copy())
     logger.debug("Creating root node")
@@ -158,7 +158,7 @@ class MCTSSearcher:
     # Terminal nodes do not require simulation and have their value returned
     if node.is_terminal():
       logger.debug("Evaluating terminal node")
-      return node.board.evaluation()
+      return symmetric_evaluation(node.board)
 
     fen = node.board.fen()
 

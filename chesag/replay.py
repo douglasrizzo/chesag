@@ -3,7 +3,6 @@ from pathlib import Path
 
 import chess.pgn
 
-from chesag.chess import ExtendedBoard
 from chesag.viewer import ChessViewer
 
 
@@ -14,7 +13,7 @@ def replay(pgn_file: str, move_delay: float):
     white_name = game.headers["White"]
     black_name = game.headers["Black"]
     viewer.initialize()
-    board = ExtendedBoard(game.board().fen())
+    board = game.board()
     viewer.update_board(board, white_name, black_name)
     for move in game.mainline_moves():
       board.push(move)

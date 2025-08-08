@@ -3,15 +3,19 @@ from typing import Literal
 from chess import Board, Move
 
 from chesag.agents.base import BaseAgent
+from chesag.evaluation import material_balance
 from chesag.move_priority import HeuristicMovePrioritizer
 
 
 class MinimaxAgent(BaseAgent):
-  def __init__(self, maxdepth: int = 5):
+  def __init__(self, maxdepth: int = 5, resign_threshold: float = 6):
     self.move_prioritizer = HeuristicMovePrioritizer()
     self.maxdepth = maxdepth
+    self.resign_threshold = resign_threshold
 
   def get_move(self, board: Board, maxdepth: int | None = None) -> Move:
+    if material_balance(board) > self.resign_threshold:
+      return Move.null()
     return self.minimax(board, maxdepth or self.maxdepth)
 
   def alphabeta_step(self, board: Board, depth: int, sign: Literal[-1, 1], alpha: float, beta: float) -> float:

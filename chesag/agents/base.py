@@ -21,6 +21,15 @@ class BaseAgent(ABC):
         A Move object representing the agent's chosen move.
     """
 
+  def win_by_resignation(self, board: Board) -> None:
+    """Signal the agent that it has won by resignation.
+
+    Parameters
+    ----------
+    board : Board
+        The current chess board position.
+    """
+
   def close(self) -> None:
     pass
 

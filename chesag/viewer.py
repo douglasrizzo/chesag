@@ -7,7 +7,7 @@ from PyQt6.QtGui import QCloseEvent, QFont
 from PyQt6.QtSvgWidgets import QSvgWidget
 from PyQt6.QtWidgets import QApplication, QDialog, QLabel, QVBoxLayout
 
-from chesag.chess import ExtendedBoard
+from chesag.evaluation import material_balance
 
 
 class ChessWindow(QDialog):
@@ -47,10 +47,10 @@ class ChessWindow(QDialog):
 
     self.setLayout(layout)
 
-  def update_board(self, board: ExtendedBoard | None = None, white_info: str = "", black_info: str = ""):
+  def update_board(self, board: Board | None = None, white_info: str = "", black_info: str = ""):
     """Update the displayed chess board."""
     if board is None:
-      board = ExtendedBoard()
+      board = Board()
 
     last_move = board.peek() if board.move_stack else None
     check_squares = list(board.checkers())
@@ -61,7 +61,7 @@ class ChessWindow(QDialog):
     self.svg_widget.load(svg_data.encode("utf-8"))
 
     # Update status
-    if board.extended_game_over():
+    if board.is_game_over():
       result = board.result()
       if result == "1-0":
         status = "Game Over: White wins!"
@@ -73,13 +73,14 @@ class ChessWindow(QDialog):
       turn = "White" if board.turn else "Black"
 
       extra = ""
+      material = material_balance(board)
       if board.is_check():
         extra = "CHECK"
       elif board.is_checkmate():
         extra = "CHECKMATE"
       if len(extra) > 0:
         extra = " | " + extra
-      status = f"Turn: {turn} | Move: {board.fullmove_number}{extra}"
+      status = f"Turn: {turn} | Move: {board.fullmove_number} | Material: {material}{extra}"
 
     self.players_label.setText(f"White: {white_info} | Black: {black_info}")
     self.game_label.setText(status)
@@ -128,21 +129,3 @@ class ChessViewer:
     if self.window is not None:
       self.window.close()
       self.window = None
-
-
-if __name__ == "__main__":
-  # Test the viewer
-  viewer = ChessViewer("Test Chess Board")
-  window = viewer.initialize()
-
-  # Create a test position
-  board = chess.Board()
-  board.push_san("e4")
-  board.push_san("e5")
-  board.push_san("Nf3")
-
-  viewer.update_board(board)
-
-  # Run the application
-  if viewer.app:
-    viewer.app.exec()

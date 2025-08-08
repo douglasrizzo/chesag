@@ -4,17 +4,22 @@ import math
 import random
 from typing import TYPE_CHECKING
 
+import numpy as np
+
+from chesag.evaluation import material_balance, symmetric_evaluation
+from chesag.logging import get_logger
 from chesag.move_priority import HeuristicMovePrioritizer
 
 if TYPE_CHECKING:
-  from chesag.chess import ExtendedBoard
   from chess import Board, Move
+
+logger = get_logger()
 
 
 class Node:
   """A node in the Monte Carlo Tree Search tree."""
 
-  def __init__(self, parent: Node | None = None, move: Move | None = None, board: ExtendedBoard | None = None) -> None:
+  def __init__(self, parent: Node | None = None, move: Move | None = None, board: Board | None = None) -> None:
     """Initialize a new node."""
     assert parent is not None or board is not None, "Either parent or board must be provided"
     self.parent = parent
@@ -39,7 +44,7 @@ class Node:
 
   def is_terminal(self) -> bool:
     """Check if this node represents a terminal game state."""
-    return self.board.extended_game_over()
+    return self.board.is_game_over()
 
   @property
   def action_value(self) -> float:
@@ -122,43 +127,43 @@ class Node:
     moves_played = 0
     max_rollout_moves = 100
 
-    while not rollout_board.extended_game_over() and moves_played < max_rollout_moves:
+    while not rollout_board.is_game_over() and moves_played < max_rollout_moves:
       legal_moves = list(rollout_board.legal_moves)
       if not legal_moves:
         break
-
       move = self._select_rollout_move(rollout_board, legal_moves)
       rollout_board.push(move)
       moves_played += 1
 
       if self._should_terminate_rollout(rollout_board):
         break
-    return rollout_board.evaluation()
+    return symmetric_evaluation(rollout_board)
 
   def _select_rollout_move(self, board: Board, legal_moves: list[Move]) -> Move:
     """Select a move for rollout using simple heuristics."""
-    captures = []
-    checks = []
+    # Get move evaluations from the move prioritizer
+    move_weights = np.array(self.move_prioritizer.move_evaluations(board, legal_moves))
 
-    for move in legal_moves:
-      temp_board = board.copy()
-      temp_board.push(move)
+    # If all weights are the same, select a move randomly
+    if np.all(move_weights == move_weights[0]):
+      return random.choice(legal_moves)
 
-      if board.is_capture(move):
-        captures.append(move)
-      elif temp_board.is_check():
-        checks.append(move)
+    # If any of the weights is infinite (checkmate), return that move
+    infty_mask = np.isinf(move_weights)
+    if infty_mask.any():
+      return legal_moves[infty_mask.argmax()]
 
-    if captures and random.random() < 0.6:
-      return random.choice(captures)
-    if checks and random.random() < 0.3:
-      return random.choice(checks)
-    return random.choice(legal_moves)
+    # Make sure they are not negative
+    if move_weights.min() < 0:
+      move_weights -= move_weights.min()
+    # Normalize weights to sum to 1
+    normalized_move_weights = move_weights / move_weights.sum()
+    # Select a move randomly based on the distribution of move evaluations
+    return random.choices(legal_moves, weights=normalized_move_weights, k=1)[0]
 
-  def _should_terminate_rollout(self, board: ExtendedBoard) -> bool:
+  def _should_terminate_rollout(self, board: Board) -> bool:
     """Check if rollout should terminate early due to clear advantage."""
-    material_balance = board.material_balance()
-    return abs(material_balance) >= 9
+    return abs(material_balance(board)) >= 9
 
   def backpropagate(self, result: float) -> None:
     """Backpropagate the simulation result up the tree."""
