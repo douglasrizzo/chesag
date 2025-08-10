@@ -2,9 +2,11 @@ import logging
 import logging.handlers
 from pathlib import Path
 
+MORE_INFO = 15
+
 # create a logger that logs to the console and a file
 logger = logging.getLogger(__name__)
-logging_level = logging.INFO
+logging_level = MORE_INFO
 logger.setLevel(logging_level)
 
 # create a console handler and set level to debug

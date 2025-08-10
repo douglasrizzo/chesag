@@ -1,131 +1,141 @@
-import sys
+# viewer.py
+from __future__ import annotations
 
 import chess
 import chess.svg
-from chess import Board
-from PyQt6.QtGui import QCloseEvent, QFont
-from PyQt6.QtSvgWidgets import QSvgWidget
-from PyQt6.QtWidgets import QApplication, QDialog, QLabel, QVBoxLayout
+from PyQt6.QtCore import Qt
+from PyQt6.QtSvgWidgets import QSvgWidget  # PyQt6: comes from QtSvgWidgets
+from PyQt6.QtWidgets import QApplication, QLabel, QVBoxLayout, QWidget
 
 from chesag.evaluation import material_balance
 
 
-class ChessWindow(QDialog):
-  """A window that displays a chess board and can be updated with new positions."""
+class ChessWindow(QWidget):
+  """Simple chess GUI window."""
 
-  def __init__(self, title: str = "Chess Game"):
-    super().__init__()
-    self.init_ui(title)
-    self.update_board()
-
-  def init_ui(self, title: str):
-    """Initialize the user interface."""
-    self.setWindowTitle(title)
-    self.setGeometry(100, 100, 600, 650)
-
-    # Create layout
-    layout = QVBoxLayout()
-
-    label_font = QFont("Arial", 12)
-
-    self.players_label = QLabel("")
-    self.players_label.setFont(label_font)
-
-    self.game_label = QLabel("Game Status: Ready")
-    self.game_label.setFont(label_font)
+  def __init__(self, parent=None) -> None:
+    super().__init__(parent)
+    self.setWindowTitle("Chess Viewer")
 
     self.svg_widget = QSvgWidget()
-    self.svg_widget.setMinimumSize(580, 580)
-
-    layout.addWidget(self.players_label)
+    self.white_label = QLabel()
+    self.black_label = QLabel()
+    self.game_label = QLabel()
+    self.setWindowFlag(Qt.WindowType.Dialog, True)
+    layout = QVBoxLayout()
+    layout.addWidget(self.svg_widget, stretch=1)
+    layout.addWidget(self.white_label)
+    layout.addWidget(self.black_label)
     layout.addWidget(self.game_label)
-    layout.addWidget(self.svg_widget)
-
-    layout.setStretchFactor(self.players_label, 0)
-    layout.setStretchFactor(self.game_label, 0)
-    layout.setStretchFactor(self.svg_widget, 1)
-
     self.setLayout(layout)
 
-  def update_board(self, board: Board | None = None, white_info: str = "", black_info: str = ""):
-    """Update the displayed chess board."""
-    if board is None:
-      board = Board()
+    # UX bits
+    self.flip = False  # allow flipping the board if you want
 
-    last_move = board.peek() if board.move_stack else None
-    check_squares = list(board.checkers())
-    check_square = check_squares[0] if check_squares else None
+    # Reasonable defaults
+    self.resize(640, 740)
 
-    # Generate SVG and display it
-    svg_data = chess.svg.board(board=board, lastmove=last_move, check=check_square)
-    self.svg_widget.load(svg_data.encode("utf-8"))
+  def resizeEvent(self, a0):
+    w = self.width()
+    h = self.height()
+    side = min(w, h)
+    # Avoid infinite loops: only adjust when actually needed
+    if w != h:
+      self.resize(side, side)
+    super().resizeEvent(a0)
 
-    # Update status
+  def set_flipped(self, flipped: bool) -> None:
+    self.flip = bool(flipped)
+
+  # ---- helpers ---------------------------------------------------------
+
+  def _status_text(self, board: chess.Board) -> str:
+    """Build a compact status line: whose turn, move number, material, and check flag."""
     if board.is_game_over():
       result = board.result()
       if result == "1-0":
-        status = "Game Over: White wins!"
-      elif result == "0-1":
-        status = "Game Over: Black wins!"
-      else:
-        status = "Game Over: Draw!"
-    else:
-      turn = "White" if board.turn else "Black"
+        return "Game Over: White wins"
+      if result == "0-1":
+        return "Game Over: Black wins"
+      return "Game Over: Draw"
+    # Material from White's perspective: positive => White ahead
+    mat = material_balance(board, chess.WHITE)
+    turn = "White" if board.turn else "Black"
+    extra = " | CHECK" if board.is_check() else ""
+    return f"Turn: {turn} | Move: {board.fullmove_number} | Material: {mat:+.1f}{extra}"
 
-      extra = ""
-      material = material_balance(board)
-      if board.is_check():
-        extra = "CHECK"
-      elif board.is_checkmate():
-        extra = "CHECKMATE"
-      if len(extra) > 0:
-        extra = " | " + extra
-      status = f"Turn: {turn} | Move: {board.fullmove_number} | Material: {material}{extra}"
+  # ---- rendering -------------------------------------------------------
 
-    self.players_label.setText(f"White: {white_info} | Black: {black_info}")
-    self.game_label.setText(status)
+  def update_board(self, board: chess.Board | None = None, white_info: str = "", black_info: str = "") -> None:
+    """Render the board, update labels."""
+    if board is None:
+      board = chess.Board()
 
-    # Force repaint
-    self.repaint()
+    # Last move + proper check highlight (expects the KING square in check)
+    last_move = board.peek() if board.move_stack else None
+    check_square = board.king(board.turn) if board.is_check() else None
 
-  def closeEvent(self, a0: QCloseEvent | None):
-    """Handle window close event."""
-    if a0 is not None:
-      a0.accept()
+    svg_kwargs = {
+      "board": board,
+      "lastmove": last_move,
+      "check": check_square,
+      "flipped": self.flip,
+    }
+    # An arrow is a clearer last-move cue than the tiny square highlight
+    if last_move:
+      svg_kwargs["arrows"] = [(last_move.from_square, last_move.to_square)]
+
+    svg_data = chess.svg.board(**svg_kwargs)
+    self.svg_widget.load(svg_data.encode("utf-8"))
+
+    # Labels
+    self.white_label.setText(f"White: {white_info}")
+    self.black_label.setText(f"Black: {black_info}")
+    self.game_label.setText(self._status_text(board))
+
+    # Let Qt schedule a repaint (avoid forcing repaint on the whole dialog)
+    self.svg_widget.update()
 
 
 class ChessViewer:
-  """A manager class for the chess viewing window."""
+  """
+  Thin wrapper managing the Qt app + window.
 
-  def __init__(self, title="Chess Game"):
-    self.app = None
-    self.window = None
-    self.title = title
+  Game.play(...) calls:
+      viewer.update_board(board, str(white_agent), str(black_agent))
+      # ...per move
+  """
 
-  def initialize(self):
-    """Initialize the Qt application and window."""
-    if self.app is None:
-      # Check if QApplication already exists
-      self.app = QApplication.instance()
-      if self.app is None:
-        self.app = QApplication(sys.argv)
+  def __init__(self) -> None:
+    self.app: QApplication | None = None
+    self.window: ChessWindow | None = None
 
+  def initialize(self) -> None:
+    """Start the Qt app and show the window (idempotent)."""
+    # Reuse existing app if one already exists
+    self.app = QApplication.instance() or QApplication([])
     if self.window is None:
-      self.window = ChessWindow(self.title)
+      self.window = ChessWindow()
       self.window.show()
 
-    return self.window
+  def update_board(self, board: chess.Board, white_info: str, black_info: str) -> None:
+    """Update the GUI with the current board + labels."""
+    if self.window is None:
+      self.initialize()
+    assert self.window is not None
+    self.window.update_board(board, white_info, black_info)
 
-  def update_board(self, board: Board, white_info: str, black_info: str):
-    """Update the chess board display."""
-    if self.window is not None:
-      self.window.update_board(board, white_info, black_info)
-      # Process events to update the display
-      if self.app is not None:
-        self.app.processEvents()
+    # Process pending events so the UI stays responsive during the engine loop
+    if self.app is not None:
+      self.app.processEvents()
 
-  def close(self):
-    """Close the viewer window."""
+  def set_flipped(self, flipped: bool) -> None:
+    if self.window is None:
+      self.initialize()
+    assert self.window is not None
+    self.window.set_flipped(flipped)
+
+  def close(self) -> None:
     if self.window is not None:
       self.window.close()
       self.window = None

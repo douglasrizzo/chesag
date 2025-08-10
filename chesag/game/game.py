@@ -26,47 +26,54 @@ class Game:
     self.moves = 0
     self.start_time = time.time()
     self.move_delay = move_delay
-
     self.viewer = viewer
 
-    # Determine which agent plays which color
+    # Color assignments
     self.player1_is_white = player1_is_white
     self.white_agent = player1_agent if player1_is_white else player2_agent
     self.black_agent = player2_agent if player1_is_white else player1_agent
+
+    # Cached agent string representations for consistent display
+    self.white_agent_str = str(self.white_agent)
+    self.black_agent_str = str(self.black_agent)
 
   def play(self, game_num: int | None = None) -> GameResult:
     """Play a single game between two agents and return the result."""
     if game_num is None:
       game_num = 1
 
-    # Initialize viewer if provided
+    # Initial board display
     if self.viewer is not None:
-      self.viewer.update_board(self.board, str(self.white_agent), str(self.black_agent))
+      self.viewer.update_board(self.board, self.white_agent_str, self.black_agent_str)
       time.sleep(self.move_delay)
 
-    # Create progress bar for this game
-    game_desc = f"Game {game_num}"
-    pbar = tqdm(unit="halfmove", desc=game_desc, leave=False)
+    pbar = tqdm(unit="ply", desc=f"Game {game_num}", leave=False)
 
     start_time = time.time()
     side_to_move = self.board.turn
     outcome = None
     resigned = False
+
     while outcome is None and not resigned:
-      resigned = not bool(self.make_move(side_to_move))
+      move = self.make_move(side_to_move)
+      resigned = not bool(move)  # True if Move.null()
       if resigned:
+        resigning_color = side_to_move
         break
+
       pbar.update(1)
       outcome = self.board.outcome()
       side_to_move = not side_to_move
+
     pbar.close()
     duration = time.time() - start_time
 
     if resigned:
-      result = "0-1" if side_to_move else "1-0"
+      result = "0-1" if resigning_color == chess.WHITE else "1-0"
       termination_reason = "RESIGNATION"
-      winner_agent = self.black_agent if side_to_move else self.white_agent
-      winner_agent.win_by_resignation(self.board)
+      winner_agent = self.black_agent if resigning_color == chess.WHITE else self.white_agent
+      if hasattr(winner_agent, "win_by_resignation"):
+        winner_agent.win_by_resignation(self.board)
     else:
       result = outcome.result()
       termination_reason = outcome.termination.name
@@ -83,22 +90,13 @@ class Game:
     )
 
   def make_move(self, color: chess.Color) -> Move:
-    """Tell player of the given color to make a move.
-
-    Parameters
-    ----------
-      color: The color of the player to make a move.
-
-    Returns
-    -------
-      The move made by the player.
-    """
-    move = self.white_agent.get_move(self.board) if color == chess.WHITE else self.black_agent.get_move(self.board)
+    """Request the given color's agent to make a move and update the board."""
+    agent = self.white_agent if color == chess.WHITE else self.black_agent
+    move = agent.get_move(self.board)
     self.board.push(move)
 
-    # Update viewer after black's move
     if self.viewer is not None:
-      self.viewer.update_board(self.board, str(self.white_agent), str(self.black_agent))
+      self.viewer.update_board(self.board, self.white_agent_str, self.black_agent_str)
       time.sleep(self.move_delay)
 
     return move

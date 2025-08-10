@@ -1,46 +1,36 @@
-from abc import ABC, abstractmethod
+import operator
+from collections import defaultdict
 
 from chess import Board, Move
 
-from chesag.evaluation import heuristic_evaluation
+from chesag.evaluation import evaluate, quick_evaluate
 
 
-class MovePrioritizer(ABC):
+class HeuristicMovePrioritizer:
+  def __init__(self):
+    self.killer_moves = defaultdict(list)  # depth -> [Move, Move]
+    self.history_heuristic = defaultdict(int)  # move key -> score
+
   def evaluate_move(self, move: Move, board: Board) -> float:
+    """Full board evaluation from the perspective of side to move."""
     board.push(move)
-    priority = self.evaluate_board(board)
+    score = evaluate(board, perspective_color=not board.turn, include_move_bonus=True)
     board.pop()
-    return priority
-
-  @abstractmethod
-  def evaluate_board(self, board: Board) -> float:
-    msg = "Subclasses must implement evaluate_board"
-    raise NotImplementedError(msg)
+    return score
 
   def order_moves(self, board: Board, moves: list[Move]) -> list[Move]:
-    return sorted(moves, key=lambda move: self.evaluate_move(move, board), reverse=True)
+    """Order moves using quick heuristics first, then evaluation as tiebreaker."""
+    move_scores = []
+    for move in moves:
+      quick = quick_evaluate(board, perspective_color=not board.turn)
+      move_scores.append((quick, move))
 
-  def move_evaluations(self, board: Board, moves: list[Move]) -> list[float]:
-    return [self.evaluate_move(move, board) for move in moves]
+    move_scores.sort(key=operator.itemgetter(0), reverse=True)
+    return [m for _, m in move_scores]
 
+  def record_history(self, move: Move, depth: int):
+    """Increment history heuristic score for a move."""
+    self.history_heuristic[move.from_square, move.to_square] += depth * depth
 
-class HeuristicMovePrioritizer(MovePrioritizer):
-  """A move prioritizer that uses chess heuristics to evaluate and order moves."""
-
-  def evaluate_board(self, board: Board) -> float:
-    """Evaluate a board based on chess heuristics and return a priority score.
-
-    Parameters
-    ----------
-    board : Board
-        The current board position
-
-    Returns
-    -------
-    float
-        A float representing the move's priority (higher values = better move)
-    """
-    return heuristic_evaluation(board)
-
-  def __str__(self) -> str:
+  def __str__(self):
     return self.__class__.__name__

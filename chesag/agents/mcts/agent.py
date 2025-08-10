@@ -65,7 +65,7 @@ class MCTSAgent(BaseAgent):
 
   def get_move(self, board: Board) -> Move:
     """Get the best move for the current board position using MCTS."""
-    if material_balance(board) > self.config.resign_threshold:
+    if material_balance(board, board.turn) < -self.config.resign_threshold:
       return Move.null()
     move_and_eval = self.mcts_searcher.should_return_single_move(board)
     if move_and_eval:

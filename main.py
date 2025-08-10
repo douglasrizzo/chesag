@@ -1,12 +1,13 @@
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 
+from tqdm import tqdm
+
 from chesag.agents import AGENTS
 from chesag.game import Game
 from chesag.game.statistics import GameStatistics
 from chesag.logging import get_logger
 from chesag.replay import replay
 from chesag.viewer import ChessViewer
-from tqdm import tqdm
 
 logger = get_logger()
 
@@ -28,7 +29,7 @@ def play(
   # Initialize viewer if visual mode is enabled
   viewer = None
   if visual:
-    viewer = ChessViewer(f"Chess: {player1} vs {player2 or player1}")
+    viewer = ChessViewer()
     viewer.initialize()
 
   # Track statistics

@@ -1,5 +1,7 @@
+from collections.abc import Iterable
+
 import chess
-from chess import Board
+from chess import Board, Move
 
 # --- Piece values ---
 PIECE_VALUES = {
@@ -22,7 +24,8 @@ MOVE_CAPTURE_WEIGHT = 0.1
 MOVE_CHECK_BONUS = 0.3
 
 # Central and extended central squares
-CENTER_SQUARES = {chess.D4, chess.D5, chess.E4, chess.E5}
+
+CENTER4 = (chess.D4, chess.E4, chess.D5, chess.E5)
 EXTENDED_CENTER = {
   chess.C3,
   chess.C4,
@@ -43,72 +46,117 @@ EXTENDED_CENTER = {
 }
 
 
-def evaluate(board: Board, perspective_color: bool, include_move_bonus: bool = False) -> float:
+# --- Main evaluation ---
+def evaluate(
+  board: Board,
+  perspective_color: bool,
+  *,
+  include_move_bonus: bool = False,
+  use_material: bool = True,
+  use_bishop_pair: bool = True,
+  use_passed_pawns: bool = True,
+  use_center_basic: bool = False,
+  use_center_extended: bool = True,
+  use_king_safety: bool = True,
+  use_mobility: bool = True,
+) -> float:
   """
   Evaluate board from perspective_color's point of view.
   Positive = good for perspective_color, Negative = good for opponent.
 
-  Parameters
-  ----------
-  board : chess.Board
-  perspective_color : bool
-      chess.WHITE or chess.BLACK
-  include_move_bonus : bool
-      If True, adds bonuses based on the last move played.
+  Toggle components with flags to trade strength for speed.
+
+  Notes
+  -----
+  - If both `use_center_basic` and `use_center_extended` are True, `use_center_extended` wins
+    (to avoid double-counting).
   """
-  # --- Terminal conditions ---
+  # Terminal conditions
   if board.is_checkmate():
     return float("inf") if board.turn != perspective_color else -float("inf")
   if board.is_stalemate() or board.is_insufficient_material():
     return 0.0
 
-  # --- Material score ---
-  score = material_balance(board, perspective_color)
+  score = 0.0
 
-  # --- Bishop pair bonus ---
-  if len(board.pieces(chess.BISHOP, perspective_color)) >= 2:
-    score += BISHOP_PAIR_BONUS
-  if len(board.pieces(chess.BISHOP, not perspective_color)) >= 2:
-    score -= BISHOP_PAIR_BONUS
+  if use_material:
+    score += material_balance(board, perspective_color)
+  if use_bishop_pair:
+    score += bishop_pair_bonus(board, perspective_color)
+  if use_passed_pawns:
+    score += passed_pawn_score(board, perspective_color)
 
-  # --- Passed pawns ---
-  score += passed_pawn_score(board, perspective_color)
+  # Center control: prefer extended if both were requested
+  if use_center_extended:
+    score += center_control(board, perspective_color, EXTENDED_CENTER)
+  elif use_center_basic:
+    score += center_control(board, perspective_color, CENTER4)
 
-  # --- Center control ---
-  score += center_control(board, perspective_color)
+  if use_king_safety:
+    score += king_safety(board, perspective_color)
+  if use_mobility:
+    score += mobility_score(board, perspective_color)
 
-  # --- King safety ---
-  score += king_safety(board, perspective_color)
-
-  # --- Mobility ---
-  score += mobility_score(board, perspective_color)
-
-  # --- Move-specific bonuses ---
   if include_move_bonus and board.move_stack:
     score += move_bonus(board, perspective_color)
 
   return score
 
 
-def material_balance(board: Board, color: bool) -> float:
+def quick_evaluate(board: Board, perspective_color: bool) -> float:
+  """
+  Very fast evaluation (few loops / no heavy queries).
+  Good for move ordering or quiescence standing-pat.
+
+  Components:
+  - material_balance
+  - bishop_pair_bonus
+  - center_control_basic (D4/E4/D5/E5)
+  (No passed pawns, no king safety scans, no mobility, no move bonus.)
+  """
+  return evaluate(
+    board,
+    perspective_color,
+    include_move_bonus=False,
+    use_material=True,
+    use_bishop_pair=True,
+    use_passed_pawns=False,
+    use_center_basic=True,
+    use_center_extended=False,
+    use_king_safety=False,
+    use_mobility=False,
+  )
+
+
+# --- Feature functions ---
+def material_balance(board: Board, perspective_color: bool) -> float:
   score = 0
   for piece_type, value in PIECE_VALUES.items():
-    score += value * len(board.pieces(piece_type, color))
-    score -= value * len(board.pieces(piece_type, not color))
-  return score
+    score += value * len(board.pieces(piece_type, chess.WHITE))
+    score -= value * len(board.pieces(piece_type, chess.BLACK))
+  return score if perspective_color == chess.WHITE else -score
 
 
-def passed_pawn_score(board: Board, color: bool) -> float:
-  bonus = 0.0
-  for pawn_square in board.pieces(chess.PAWN, color):
-    if is_passed_pawn(board, pawn_square, color):
-      rank = chess.square_rank(pawn_square) if color == chess.WHITE else 7 - chess.square_rank(pawn_square)
-      bonus += PASSED_PAWN_BONUS * (rank / 6)
-  for pawn_square in board.pieces(chess.PAWN, not color):
-    if is_passed_pawn(board, pawn_square, not color):
-      rank = chess.square_rank(pawn_square) if color != chess.WHITE else 7 - chess.square_rank(pawn_square)
-      bonus -= PASSED_PAWN_BONUS * (rank / 6)
-  return bonus
+def bishop_pair_bonus(board: Board, perspective_color: bool) -> float:
+  score = 0
+  if len(board.pieces(chess.BISHOP, chess.WHITE)) >= 2:
+    score += BISHOP_PAIR_BONUS
+  if len(board.pieces(chess.BISHOP, chess.BLACK)) >= 2:
+    score -= BISHOP_PAIR_BONUS
+  return score if perspective_color == chess.WHITE else -score
+
+
+def passed_pawn_score(board: Board, perspective_color: bool) -> float:
+  score = 0.0
+  for pawn_square in board.pieces(chess.PAWN, chess.WHITE):
+    if is_passed_pawn(board, pawn_square, chess.WHITE):
+      rank = chess.square_rank(pawn_square)
+      score += PASSED_PAWN_BONUS * (rank / 6)
+  for pawn_square in board.pieces(chess.PAWN, chess.BLACK):
+    if is_passed_pawn(board, pawn_square, chess.BLACK):
+      rank = 7 - chess.square_rank(pawn_square)
+      score -= PASSED_PAWN_BONUS * (rank / 6)
+  return score if perspective_color == chess.WHITE else -score
 
 
 def is_passed_pawn(board: Board, square: chess.Square, color: bool) -> bool:
@@ -125,89 +173,126 @@ def is_passed_pawn(board: Board, square: chess.Square, color: bool) -> bool:
   return True
 
 
-def center_control(board: Board, color: bool) -> float:
-  score = 0.0
-  for square in EXTENDED_CENTER:
-    attackers_ours = len(board.attackers(color, square))
-    attackers_theirs = len(board.attackers(not color, square))
-    score += (attackers_ours - attackers_theirs) * CENTER_CONTROL_WEIGHT
-  return score
+def center_control(board: Board, perspective_color: bool, squares: Iterable[chess.Square]) -> float:
+  w = sum(len(board.attackers(chess.WHITE, sq)) for sq in squares)
+  b = sum(len(board.attackers(chess.BLACK, sq)) for sq in squares)
+  score = (w - b) * CENTER_CONTROL_WEIGHT
+  return score if perspective_color == chess.WHITE else -score
 
 
-def king_safety(board: Board, color: bool) -> float:
+def king_safety(board: Board, perspective_color: bool) -> float:
   score = 0.0
-  king_square = board.king(color)
-  if king_square is None:
-    return score
+  king_square_white = board.king(chess.WHITE)
+  king_square_black = board.king(chess.BLACK)
 
   # Castling rights
-  if board.has_kingside_castling_rights(color):
+  if board.has_kingside_castling_rights(chess.WHITE):
     score += KING_CASTLE_BONUS
-  if board.has_queenside_castling_rights(color):
+  if board.has_queenside_castling_rights(chess.WHITE):
     score += KING_CASTLE_BONUS
+  if board.has_kingside_castling_rights(chess.BLACK):
+    score -= KING_CASTLE_BONUS
+  if board.has_queenside_castling_rights(chess.BLACK):
+    score -= KING_CASTLE_BONUS
 
   # Open files near king
+  if king_square_white is not None:
+    score += open_file_and_shield_penalty(board, king_square_white, chess.WHITE)
+  if king_square_black is not None:
+    score -= open_file_and_shield_penalty(board, king_square_black, chess.BLACK)
+
+  return score if perspective_color == chess.WHITE else -score
+
+
+def open_file_and_shield_penalty(board: Board, king_square: chess.Square, color: bool) -> float:
+  score = 0.0
   king_file = chess.square_file(king_square)
+
+  # Half-open files near king (no friendly pawns on that file)
   for f in (king_file - 1, king_file, king_file + 1):
     if 0 <= f <= 7:
       file_squares = [chess.square(f, r) for r in range(8)]
       if not any(board.piece_type_at(sq) == chess.PAWN and board.color_at(sq) == color for sq in file_squares):
         score += KING_OPEN_FILE_PENALTY
 
-  # Pawn shield in front of king
+  # Pawn shield one rank in front of the king
   forward = 1 if color == chess.WHITE else -1
-  shield_ranks = [
-    chess.square(king_file + df, chess.square_rank(king_square) + forward)
-    for df in (-1, 0, 1)
-    if 0 <= king_file + df <= 7
-  ]
-  for sq in shield_ranks:
-    if board.piece_type_at(sq) != chess.PAWN or board.color_at(sq) != color:
-      score += PAWN_SHIELD_PENALTY
+  target_rank = chess.square_rank(king_square) + forward
+  if 0 <= target_rank <= 7:
+    shield_files = [f for f in (king_file - 1, king_file, king_file + 1) if 0 <= f <= 7]
+    shield_squares = [chess.square(f, target_rank) for f in shield_files]
+    for sq in shield_squares:
+      if board.piece_type_at(sq) != chess.PAWN or board.color_at(sq) != color:
+        score += PAWN_SHIELD_PENALTY
 
   return score
 
 
-def mobility_score(board: Board, color: bool) -> float:
-  # Generate moves without changing turn
-  board_turn = board.turn
-  board.turn = color
-  mobility_ours = sum(1 for _ in board.legal_moves)
-  board.turn = not color
-  mobility_theirs = sum(1 for _ in board.legal_moves)
-  board.turn = board_turn
-  return (mobility_ours - mobility_theirs) * 0.05
+def mobility_score(board: Board, perspective_color: bool) -> float:
+  # Save current turn
+  saved_turn = board.turn
+
+  # White mobility
+  board.turn = chess.WHITE
+  mobility_white = sum(1 for _ in board.legal_moves)
+
+  # Black mobility
+  board.turn = chess.BLACK
+  mobility_black = sum(1 for _ in board.legal_moves)
+
+  # Restore turn
+  board.turn = saved_turn
+
+  score = (mobility_white - mobility_black) * 0.05
+  return score if perspective_color == chess.WHITE else -score
+
+
+def mvv_lva_score(board: Board, move: Move) -> float:
+  if not board.is_capture(move):
+    return 0
+
+  # victim square/type on the *current* board (pre-move)
+  victim_type = board.piece_type_at(move.to_square)
+  if victim_type is None and board.is_en_passant(move):
+    victim_type = chess.PAWN  # en passant always captures a pawn
+
+  if victim_type is None:
+    return 0  # defensive
+
+  attacker_type = board.piece_type_at(move.from_square)  # pre-move attacker
+  victim_val = PIECE_VALUES[victim_type]
+  attacker_val = PIECE_VALUES[attacker_type] if attacker_type else 1
+  return (victim_val * 10) - attacker_val
 
 
 def move_bonus(board: Board, perspective_color: bool) -> float:
-  """Bonuses for the last move played, from perspective_color's POV."""
+  """Bonuses for the last move played (board already has the move pushed)."""
+  if not board.move_stack:
+    return 0.0
+
   move = board.peek()
-  move_color = not board.turn  # player who made the move
+  move_color = not board.turn  # side that just moved
   bonus = 0.0
 
-  # Bonus for captures
+  # Capture bonus
   if board.is_capture(move):
-    captured_piece_type = board.piece_type_at(move.to_square)
-    attacker_piece_type = board.piece_type_at(move.from_square)  # after move, so None
-    # Need to detect attacker from before move
+    # We need pre-move state to read attacker & victim
     board.pop()
-    attacker_piece_type = board.piece_type_at(move.from_square)
-    board.push(move)
+    try:
+      bonus = mvv_lva_score(board, move)
+    finally:
+      board.push(move)
 
-    if captured_piece_type:
-      bonus_value = PIECE_VALUES[captured_piece_type] * MOVE_CAPTURE_WEIGHT
-      bonus += bonus_value if move_color == perspective_color else -bonus_value
-    if attacker_piece_type and attacker_piece_type != chess.KING:
-      attacker_bonus = (1 - PIECE_VALUES[attacker_piece_type]) * MOVE_CAPTURE_WEIGHT
-      bonus += attacker_bonus if move_color == perspective_color else -attacker_bonus
-
-  # Bonus for checks
+  # Check bonus: after the move, if opponent is in check this returns True
   if board.is_check():
-    bonus += MOVE_CHECK_BONUS if move_color == perspective_color else -MOVE_CHECK_BONUS
+    bonus += MOVE_CHECK_BONUS
 
-  # Bonus for promotions
+  # Promotion bonus
   if move.promotion:
-    promo_bonus = PIECE_VALUES[move.promotion] - PIECE_VALUES[chess.PAWN]
-    bonus += promo_bonus if move_color == perspective_color else -promo_bonus
+    bonus += PIECE_VALUES[move.promotion] - PIECE_VALUES[chess.PAWN]
+
+  # Flip perspective if the last move was by the opponent
+  if move_color != perspective_color:
+    bonus = -bonus
 
   return bonus
