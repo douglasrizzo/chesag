@@ -143,12 +143,10 @@ class MCTSSearcher:
 
   def search(self, root: Node, num_simulations: int, c_puct: float) -> None:
     for sim in range(num_simulations):
+      logger.debug("Sim %s/%s", sim + 1, num_simulations)
       if self.transposition_table is not None:
-        logger.log(15, "Sim %s/%s", sim + 1, num_simulations)
         self.remaining_simulations_until_cache_persist -= 1
-      else:
-        logger.info("Sim %s/%s", sim + 1, num_simulations)
-
+        logger.debug("Remaining simulations until cache persist: %s", self.remaining_simulations_until_cache_persist)
       self.single_step(root, c_puct)
 
     if self.transposition_table is not None and self.remaining_simulations_until_cache_persist <= 0:

@@ -27,8 +27,8 @@ class MinimaxAgent(BaseAgent):
       logger.log(MORE_INFO, "Returning single legal move")
       return legal_moves[0]
 
-    self.last_search = {"depth_0": {"searched": 0}}
     sorted_moves = self.move_prioritizer.order_moves(board, legal_moves)
+    self.last_search = {"depth_0": {"searched": len(sorted_moves), "pruned": 0}}
     best_move = None
     best_value = float("-inf") if board.turn == chess.WHITE else float("inf")
     maximizing = board.turn == chess.WHITE
@@ -63,7 +63,6 @@ class MinimaxAgent(BaseAgent):
       depth_dict["searched"] += 1
       alpha = max(alpha, value)
       if alpha >= beta:
-        # record history on cutoff
         self.move_prioritizer.record_history(move, depth)
         depth_dict["pruned"] += len(moves) - idx + 1
         break
