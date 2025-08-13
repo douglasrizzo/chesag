@@ -10,15 +10,15 @@ logger = get_logger()
 
 
 class MinimaxAgent(BaseAgent):
-  def __init__(self, maxdepth: int = 4, resign_threshold: float = 6):
+  def __init__(self, maxdepth: int = 4, resign_threshold: float | None = None):
     self.move_prioritizer = HeuristicMovePrioritizer()
     self.maxdepth = maxdepth
-    self.resign_threshold = resign_threshold
+    self.resign_threshold = min(resign_threshold, -resign_threshold) if resign_threshold is not None else float("-inf")
     self.last_search: dict[str, dict[str, int]] = {}
 
   def get_move(self, board: Board) -> Move:
     # Resign if losing badly from the current side's perspective
-    if evaluate(board, board.turn) < -self.resign_threshold:
+    if evaluate(board, board.turn) < self.resign_threshold:
       return Move.null()
 
     """Return the best move for the current side."""

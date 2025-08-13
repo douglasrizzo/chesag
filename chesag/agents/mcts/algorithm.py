@@ -15,8 +15,6 @@ from chesag.logging import get_logger
 if TYPE_CHECKING:
   from chess import Board, Move
 
-  from chesag.agents.mcts.move_selection import MoveSelectionStrategy
-
 logger = get_logger()
 
 
@@ -37,8 +35,7 @@ class MCTSSearcher:
 
   cache_file = Path("cache/mcts_cache.pickle")
 
-  def __init__(self, move_selection: MoveSelectionStrategy, use_pruning: bool = True):
-    self.move_selector = move_selection.value
+  def __init__(self, use_pruning: bool = True):
     self.cache_persist_interval = 1000
     self.remaining_simulations_until_cache_persist = self.cache_persist_interval
     self.transposition_table = self.load_cache() if use_pruning else None
@@ -55,6 +52,7 @@ class MCTSSearcher:
 
   def save_cache(self):
     if self.transposition_table is not None:
+      self.cache_file.parent.mkdir(parents=True, exist_ok=True)
       with self.cache_file.open("wb") as f:
         pickle.dump(self.transposition_table, f)
         logger.log(18, "Saved transposition table (%d entries)", len(self.transposition_table))
@@ -153,11 +151,19 @@ class MCTSSearcher:
       self.save_cache()
       self.remaining_simulations_until_cache_persist = self.cache_persist_interval
 
-  def get_best_child(self, root: Node) -> tuple[Move, int, float]:
-    best_child = self.move_selector.select_best_child(root)
+  @staticmethod
+  def get_best_child(root: Node) -> tuple[Move, int, float]:
+    best_child = max(root.children, key=lambda child: child.action_value)
     if best_child is None or best_child.move is None:
       raise ValueError("No best move found")
     return best_child.move, best_child.visits, best_child.value
 
-  def aggregate_results(self, results: list[tuple[str, int, float]]) -> dict[str, int]:
-    return self.move_selector.aggregate_results(results)
+  @staticmethod
+  def aggregate_results(results: list[tuple[str, int, float]]) -> dict[str, int]:
+    move_visits = {}
+    move_values = {}
+    for move_uci, visits, values in results:
+      if move_uci and visits > 0:
+        move_visits[move_uci] = move_visits.get(move_uci, 0) + visits
+        move_values[move_uci] = move_values.get(move_uci, 0) + values
+    return {move_uci: move_values[move_uci] / move_visits[move_uci] for move_uci in move_visits}
