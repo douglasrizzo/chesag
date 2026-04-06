@@ -1,3 +1,5 @@
+"""Game statistics reporting."""
+
 from collections import Counter
 from dataclasses import dataclass
 
@@ -73,8 +75,8 @@ class GameStatistics:
     """Count Player 2's wins when playing as black."""
     return sum(1 for result in self.results if result.player2_color == "black" and result.player2_result == "1-0")
 
-  def report(self) -> None:
-    """Print comprehensive game statistics."""
+  def report(self) -> str:
+    """Build a comprehensive game statistics report."""
     # Termination reasons
     termination_counts = Counter(result.termination_reason for result in self.results)
 
@@ -112,5 +114,4 @@ class GameStatistics:
       for i, result in enumerate(self.results, 1):
         lines.append(f"Game {i}: {result}")
 
-    report = "\n".join(lines)
-    print(report)
+    return "\n".join(lines)

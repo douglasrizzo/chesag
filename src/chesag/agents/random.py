@@ -1,3 +1,5 @@
+"""Random-move chess agent."""
+
 from chess import Board, Move
 from numpy.random import default_rng
 
@@ -35,12 +37,14 @@ class RandomAgent(BaseAgent):
     board : Board
         The current chess board position.
 
-    Returns
+    Returns:
     -------
     Move
         A randomly selected legal move from the current position.
     """
-    if material_balance(board) > self.resign_threshold:
+    evaluation = material_balance(board, board.turn)
+    if evaluation < -self.resign_threshold:
       return Move.null()
     legal_moves = list(board.legal_moves)
-    return self.generator.choice(legal_moves)
+    move_idx = int(self.generator.integers(0, len(legal_moves)))
+    return legal_moves[move_idx]

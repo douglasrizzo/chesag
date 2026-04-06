@@ -1,3 +1,5 @@
+"""Move ordering heuristics."""
+
 import operator
 from collections import defaultdict
 
@@ -7,7 +9,10 @@ from chesag.evaluation import evaluate, quick_evaluate
 
 
 class HeuristicMovePrioritizer:
-  def __init__(self):
+  """Score and order moves for search algorithms."""
+
+  def __init__(self) -> None:
+    """Initialize move-ordering state."""
     self.killer_moves = defaultdict(list)  # depth -> [Move, Move]
     self.history_heuristic = defaultdict(int)  # move key -> score
 
@@ -22,15 +27,21 @@ class HeuristicMovePrioritizer:
     """Order moves using quick heuristics first, then evaluation as tiebreaker."""
     move_scores = []
     for move in moves:
-      quick = quick_evaluate(board, perspective_color=not board.turn)
-      move_scores.append((quick, move))
+      board.push(move)
+      try:
+        quick = quick_evaluate(board, perspective_color=not board.turn)
+        full = evaluate(board, perspective_color=not board.turn, include_move_bonus=True)
+      finally:
+        board.pop()
+      move_scores.append((quick, full, move))
 
-    move_scores.sort(key=operator.itemgetter(0), reverse=True)
-    return [m for _, m in move_scores]
+    move_scores.sort(key=operator.itemgetter(0, 1), reverse=True)
+    return [move for _, _, move in move_scores]
 
-  def record_history(self, move: Move, depth: int):
+  def record_history(self, move: Move, depth: int) -> None:
     """Increment history heuristic score for a move."""
     self.history_heuristic[move.from_square, move.to_square] += depth * depth
 
-  def __str__(self):
+  def __str__(self) -> str:
+    """Return the prioritizer name."""
     return self.__class__.__name__

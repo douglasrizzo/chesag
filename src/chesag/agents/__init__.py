@@ -1,3 +1,5 @@
+"""Agent implementations and registry."""
+
 from .base import BaseAgent as BaseAgent
 from .mcts.agent import MCTSAgent as MCTSAgent
 from .minimax import MinimaxAgent as MinimaxAgent
@@ -9,6 +11,5 @@ AGENTS = {
   "random": RandomAgent,
   "minimax": MinimaxAgent,
   "mcts": MCTSAgent,
-  "base": BaseAgent,
   "stockfish": StockfishAgent,
 }

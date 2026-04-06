@@ -1,5 +1,8 @@
-# viewer.py
+"""PyQt-based chess board viewer."""
+
 from __future__ import annotations
+
+from typing import TYPE_CHECKING, cast
 
 import chess
 import chess.svg
@@ -9,11 +12,15 @@ from PyQt6.QtWidgets import QApplication, QLabel, QVBoxLayout, QWidget
 
 from chesag.evaluation import material_balance
 
+if TYPE_CHECKING:
+  from PyQt6.QtGui import QResizeEvent
+
 
 class ChessWindow(QWidget):
   """Simple chess GUI window."""
 
-  def __init__(self, parent=None) -> None:
+  def __init__(self, parent: QWidget | None = None) -> None:
+    """Initialize the viewer window."""
     super().__init__(parent)
     self.setWindowTitle("Chess Viewer")
 
@@ -35,7 +42,8 @@ class ChessWindow(QWidget):
     # Reasonable defaults
     self.resize(640, 740)
 
-  def resizeEvent(self, a0):
+  def resizeEvent(self, a0: QResizeEvent | None) -> None:
+    """Keep the window square during resize operations."""
     w = self.width()
     h = self.height()
     side = min(w, h)
@@ -45,6 +53,7 @@ class ChessWindow(QWidget):
     super().resizeEvent(a0)
 
   def set_flipped(self, flipped: bool) -> None:
+    """Flip the board orientation."""
     self.flip = bool(flipped)
 
   # ---- helpers ---------------------------------------------------------
@@ -75,17 +84,14 @@ class ChessWindow(QWidget):
     last_move = board.peek() if board.move_stack else None
     check_square = board.king(board.turn) if board.is_check() else None
 
-    svg_kwargs = {
-      "board": board,
-      "lastmove": last_move,
-      "check": check_square,
-      "flipped": self.flip,
-    }
-    # An arrow is a clearer last-move cue than the tiny square highlight
-    if last_move:
-      svg_kwargs["arrows"] = [(last_move.from_square, last_move.to_square)]
-
-    svg_data = chess.svg.board(**svg_kwargs)
+    arrows = [(last_move.from_square, last_move.to_square)] if last_move else []
+    svg_data = chess.svg.board(
+      board=board,
+      lastmove=last_move,
+      check=check_square,
+      arrows=arrows,
+      flipped=self.flip,
+    )
     self.svg_widget.load(svg_data.encode("utf-8"))
 
     # Labels
@@ -98,8 +104,7 @@ class ChessWindow(QWidget):
 
 
 class ChessViewer:
-  """
-  Thin wrapper managing the Qt app + window.
+  """Thin wrapper managing the Qt app and top-level window.
 
   Game.play(...) calls:
       viewer.update_board(board, str(white_agent), str(black_agent))
@@ -107,13 +112,15 @@ class ChessViewer:
   """
 
   def __init__(self) -> None:
+    """Initialize the viewer wrapper."""
     self.app: QApplication | None = None
     self.window: ChessWindow | None = None
 
   def initialize(self) -> None:
     """Start the Qt app and show the window (idempotent)."""
     # Reuse existing app if one already exists
-    self.app = QApplication.instance() or QApplication([])
+    app = QApplication.instance() or QApplication([])
+    self.app = cast("QApplication", app)
     if self.window is None:
       self.window = ChessWindow()
       self.window.show()
@@ -130,12 +137,14 @@ class ChessViewer:
       self.app.processEvents()
 
   def set_flipped(self, flipped: bool) -> None:
+    """Flip the board orientation."""
     if self.window is None:
       self.initialize()
     assert self.window is not None
     self.window.set_flipped(flipped)
 
   def close(self) -> None:
+    """Close the viewer window if it exists."""
     if self.window is not None:
       self.window.close()
       self.window = None

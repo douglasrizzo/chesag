@@ -1,3 +1,5 @@
+"""Package CLI entrypoint."""
+
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 
 from tqdm import tqdm
@@ -22,17 +24,14 @@ def play(
   move_delay: float = 1.0,
 ) -> None:
   """Play one or more games between two agents with color swapping for fairness."""
-  # Initialize agents
   player1_agent = AGENTS[player1]()
   player2_agent = AGENTS[player2]() if player2 else player1_agent
 
-  # Initialize viewer if visual mode is enabled
   viewer = None
   if visual:
     viewer = ChessViewer()
     viewer.initialize()
 
-  # Track statistics
   results = []
   player1_wins = 0
   player2_wins = 0
@@ -51,10 +50,8 @@ def play(
   if fen:
     logger.info("Starting position: %s", fen)
 
-  # Main game loop with overall progress bar
   with tqdm(total=num_games, desc="Overall Progress", unit="games") as overall_pbar:
     for game_num in range(1, num_games + 1):
-      # Alternate colors: Player 1 is white on odd games, black on even games
       player1_is_white = (game_num % 2) == 1
 
       game = Game(
@@ -66,15 +63,12 @@ def play(
         move_delay=move_delay,
       )
 
-      # Play the game
       game_result = game.play(game_num)
       results.append(game_result)
 
-      # Update statistics
       total_moves += game_result.moves
       total_duration += game_result.duration
 
-      # Count wins from player perspective, not color
       player1_result = game_result.player1_result
       if player1_result == "1-0":
         player1_wins += 1
@@ -83,19 +77,16 @@ def play(
       elif player1_result == "1/2-1/2":
         draws += 1
 
-      msg = f"Game: {game_result}"
-      logger.info(msg)
+      logger.info("Game: %s", game_result)
       overall_pbar.update(1)
 
-  # Clean up agents
   player1_agent.close()
-  player2_agent.close()
+  if player2_agent is not player1_agent:
+    player2_agent.close()
 
-  # Clean up viewer
   if viewer is not None:
     viewer.close()
 
-  # Create and print statistics
   stats = GameStatistics(
     total_games=num_games,
     player1_wins=player1_wins,
@@ -108,7 +99,6 @@ def play(
     results=results,
   )
 
-  # Always print statistics for multiple games, or if requested for single game
   if num_games > 1 or verbose:
     report = stats.report()
     logger.info(report)
@@ -120,17 +110,15 @@ def train(args: object) -> None:
   raise NotImplementedError(msg)
 
 
-if __name__ == "__main__":
-  # Create an argument parser with two subparsers for train and play
+def main() -> None:
+  """Run the CLI entrypoint."""
   parser = ArgumentParser(description="RL Chess", formatter_class=ArgumentDefaultsHelpFormatter)
   subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-  # Train subparser
   train_parser = subparsers.add_parser("train", help="Train the model")
   train_parser.add_argument("--epochs", type=int, default=100, help="Number of epochs")
   train_parser.add_argument("--batch_size", type=int, default=32, help="Batch size")
 
-  # Play subparser
   play_parser = subparsers.add_parser("play", help="Play game(s) between two agents")
   agent_choices = list(AGENTS.keys())
   play_parser.add_argument("player1", type=str, choices=agent_choices, help="Player 1 agent")
@@ -141,17 +129,14 @@ if __name__ == "__main__":
   play_parser.add_argument("--visual", action="store_true", help="Show visual chess board during games")
   play_parser.add_argument("--move-delay", type=float, default=0.0, help="Delay between moves in visual mode (seconds)")
 
-  # Replay subparser
   replay_parser = subparsers.add_parser("replay", help="Replay game(s) from a PGN file")
   replay_parser.add_argument("pgn_file", type=str, help="PGN file to replay")
   replay_parser.add_argument(
     "--move-delay", type=float, default=0.0, help="Delay between moves in visual mode (seconds)"
   )
 
-  # Parse arguments
   args = parser.parse_args()
 
-  # Execute command
   if args.command == "train":
     train(args)
   elif args.command == "play":

@@ -1,3 +1,5 @@
+"""Base agent interfaces."""
+
 from abc import ABC, abstractmethod
 
 from chess import Board, Move
@@ -15,7 +17,7 @@ class BaseAgent(ABC):
     board : Board
         The current chess board position.
 
-    Returns
+    Returns:
     -------
     Move
         A Move object representing the agent's chosen move.
@@ -31,7 +33,7 @@ class BaseAgent(ABC):
     """
 
   def close(self) -> None:
-    pass
+    """Release any external resources held by the agent."""
 
   def __str__(self) -> str:
     """Return a string representation of the agent."""

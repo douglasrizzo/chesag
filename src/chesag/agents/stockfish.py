@@ -1,3 +1,5 @@
+"""Stockfish-backed chess agent."""
+
 import contextlib
 
 import chess
@@ -10,8 +12,7 @@ class StockfishAgent(BaseAgent):
   """A chess agent that uses the Stockfish engine to make moves."""
 
   def __init__(self, stockfish_path: str = "/usr/bin/stockfish", time_limit: float = 0.1) -> None:
-    """
-    Initialize the Stockfish agent with a UCI engine connection.
+    """Initialize the Stockfish agent with a UCI engine connection.
 
     Parameters
     ----------
@@ -24,8 +25,7 @@ class StockfishAgent(BaseAgent):
     self.engine = chess.engine.SimpleEngine.popen_uci(stockfish_path)
 
   def get_move(self, board: chess.Board, time_limit: float | None = None) -> chess.Move:
-    """
-    Get the best move from Stockfish for the given board position.
+    """Get the best move from Stockfish for the given board position.
 
     Parameters
     ----------
@@ -34,14 +34,18 @@ class StockfishAgent(BaseAgent):
     time_limit : float or None, optional
         Optional time limit override. If None, uses the instance's default time_limit.
 
-    Returns
+    Returns:
     -------
     chess.Move
         The best move according to Stockfish.
     """
     result = self.engine.play(board, chess.engine.Limit(time=time_limit or self.time_limit))
+    if result.move is None:
+      msg = "Stockfish did not return a move"
+      raise ValueError(msg)
     return result.move
 
-  def close(self):
+  def close(self) -> None:
+    """Close the underlying Stockfish process."""
     with contextlib.suppress(chess.engine.EngineTerminatedError):
       self.engine.quit()

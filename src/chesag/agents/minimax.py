@@ -1,3 +1,5 @@
+"""Minimax-based chess agent."""
+
 import chess
 from chess import Board, Move
 
@@ -10,18 +12,20 @@ logger = get_logger()
 
 
 class MinimaxAgent(BaseAgent):
-  def __init__(self, maxdepth: int = 4, resign_threshold: float | None = None):
+  """Depth-limited alpha-beta search agent."""
+
+  def __init__(self, maxdepth: int = 4, resign_threshold: float | None = None) -> None:
+    """Initialize the minimax agent."""
     self.move_prioritizer = HeuristicMovePrioritizer()
     self.maxdepth = maxdepth
     self.resign_threshold = min(resign_threshold, -resign_threshold) if resign_threshold is not None else float("-inf")
     self.last_search: dict[str, dict[str, int]] = {}
 
   def get_move(self, board: Board) -> Move:
+    """Return the best move for the current side."""
     # Resign if losing badly from the current side's perspective
     if evaluate(board, board.turn) < self.resign_threshold:
       return Move.null()
-
-    """Return the best move for the current side."""
     legal_moves = list(board.generate_legal_moves())
     if len(legal_moves) == 1:
       logger.log(MORE_INFO, "Returning single legal move")
@@ -54,7 +58,7 @@ class MinimaxAgent(BaseAgent):
     depth_dict = self.last_search[f"depth_{self.maxdepth - depth}"] = self.last_search.get(
       f"depth_{self.maxdepth - depth}", {"searched": 0, "pruned": 0}
     )
-    moves = self.move_prioritizer.order_moves(board, board.generate_legal_moves())
+    moves = self.move_prioritizer.order_moves(board, list(board.generate_legal_moves()))
     value = float("-inf")
     for idx, move in enumerate(moves):
       board.push(move)
@@ -91,5 +95,6 @@ class MinimaxAgent(BaseAgent):
 
     return alpha
 
-  def __str__(self):
+  def __str__(self) -> str:
+    """Return a compact agent description."""
     return f"MinimaxAgent({self.move_prioritizer}, maxdepth={self.maxdepth})"

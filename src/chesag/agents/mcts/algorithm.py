@@ -1,3 +1,5 @@
+"""Core MCTS search algorithm."""
+
 from __future__ import annotations
 
 import pickle
@@ -27,6 +29,7 @@ class CachedNode:
 
   @property
   def score(self) -> float:
+    """Return the average cached score."""
     return self.value / self.visits if self.visits > 0 else 0.0
 
 
@@ -35,13 +38,15 @@ class MCTSSearcher:
 
   cache_file = Path("cache/mcts_cache.pickle")
 
-  def __init__(self, use_pruning: bool = True):
+  def __init__(self, use_pruning: bool = True) -> None:
+    """Initialize the searcher and optional transposition table."""
     self.cache_persist_interval = 1000
     self.remaining_simulations_until_cache_persist = self.cache_persist_interval
     self.transposition_table = self.load_cache() if use_pruning else None
 
   @staticmethod
   def load_cache() -> LRUCache[str, CachedNode]:
+    """Load the persisted transposition table if present."""
     if not MCTSSearcher.cache_file.exists():
       logger.info("Cache file not found, creating new cache")
       return LRUCache(maxsize=500_000)
@@ -50,7 +55,8 @@ class MCTSSearcher:
       logger.info("Loaded transposition table with %d entries", len(cache))
       return cache
 
-  def save_cache(self):
+  def save_cache(self) -> None:
+    """Persist the transposition table to disk."""
     if self.transposition_table is not None:
       self.cache_file.parent.mkdir(parents=True, exist_ok=True)
       with self.cache_file.open("wb") as f:
@@ -59,6 +65,7 @@ class MCTSSearcher:
 
   @staticmethod
   def get_legal_moves(board: Board) -> list[Move]:
+    """Return legal moves for a non-terminal board."""
     if board.is_game_over():
       raise ValueError("Cannot search from terminal position")
     legal_moves = list(board.legal_moves)
@@ -68,6 +75,7 @@ class MCTSSearcher:
 
   @staticmethod
   def should_return_single_move(board: Board) -> tuple[Move, float] | None:
+    """Short-circuit positions with exactly one legal move."""
     legal_moves = MCTSSearcher.get_legal_moves(board)
     if len(legal_moves) == 1:
       next_board = board.copy()
@@ -77,6 +85,7 @@ class MCTSSearcher:
     return None
 
   def create_root_node(self, board: Board) -> Node:
+    """Create and expand the root search node."""
     root = Node(board=board.copy())
     logger.debug("Creating root node")
     root.expand()
@@ -86,14 +95,11 @@ class MCTSSearcher:
 
   def single_step(self, root: Node, c_puct: float) -> float:
     """Run one MCTS simulation from the root."""
-    path = [root]
     current = root
-    perspective_color = current.board.turn
 
     # Selection
     while not current.is_terminal() and current.is_expanded and current.children:
       current = current.select_child(c_puct)
-      path.append(current)
 
     # Expansion
     if not current.is_terminal():
@@ -101,45 +107,40 @@ class MCTSSearcher:
         current.expand()
       if current.children:
         current = random.choice(current.children)
-        path.append(current)
 
     # Simulation
-    result = self.simulate(current, perspective_color)
+    result = self.simulate(current)
 
     # Backpropagation
     current.backpropagate(result)
     return result
 
-  def simulate(self, node: Node, perspective_color: bool) -> float:
+  def simulate(self, node: Node) -> float:
+    """Evaluate one node by rollout or cached value."""
     if node.is_terminal():
       return evaluate(node.board, perspective_color=node.board.turn)  # STM perspective
 
     fen = node.board.fen()
 
-    # If we have a cache entry, return it, flipping sign if needed
     if self.transposition_table is not None:
       cached = self.transposition_table.get(fen)
       if cached and cached.visits >= 200:
-        # Flip sign if the caller's perspective differs from STM
-        return cached.value if perspective_color == node.board.turn else -cached.value
+        return cached.score
 
-    # Run rollout from the STM perspective
     result = node.rollout()
-
-    # Normalize result to STM perspective before storing
-    normalized_result = result if perspective_color == node.board.turn else -result
 
     if self.transposition_table is not None:
       if fen not in self.transposition_table:
-        self.transposition_table[fen] = CachedNode(normalized_result, 1)
+        self.transposition_table[fen] = CachedNode(result, 1)
       else:
         entry = self.transposition_table[fen]
-        entry.value += normalized_result
+        entry.value += result
         entry.visits += 1
 
     return result
 
   def search(self, root: Node, num_simulations: int, c_puct: float) -> None:
+    """Run repeated MCTS simulations from the root."""
     for sim in range(num_simulations):
       logger.debug("Sim %s/%s", sim + 1, num_simulations)
       if self.transposition_table is not None:
@@ -153,13 +154,17 @@ class MCTSSearcher:
 
   @staticmethod
   def get_best_child(root: Node) -> tuple[Move, int, float]:
-    best_child = max(root.children, key=lambda child: child.action_value)
+    """Select the best root child using visit count then value."""
+    visited_children = [child for child in root.children if child.visits > 0]
+    candidate_children = visited_children or root.children
+    best_child = max(candidate_children, key=lambda child: (child.visits, child.value / max(child.visits, 1)))
     if best_child is None or best_child.move is None:
       raise ValueError("No best move found")
     return best_child.move, best_child.visits, best_child.value
 
   @staticmethod
   def aggregate_results(results: list[tuple[str, int, float]]) -> dict[str, int]:
+    """Aggregate worker results into average move values."""
     move_visits = {}
     move_values = {}
     for move_uci, visits, values in results:

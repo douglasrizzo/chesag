@@ -11,3 +11,90 @@ dependencies = [
   "pyqt6==6.10.1",
   "tqdm>=4.67.1",
 ]
+
+[project.scripts]
+chesag = "chesag.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.10.0,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+  "pre-commit>=4.5.0",
+  "pytest>=8.4.0",
+  "ruff>=0.15.0",
+  "ty>=0.0.1a13",
+]
+
+[tool.ruff]
+line-length = 120
+indent-width = 2
+preview = true
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "F",
+  "E",
+  "W",
+  "I",
+  "N",
+  "D",
+  "UP",
+  "ANN",
+  "B",
+  "A",
+  "C4",
+  "EXE",
+  "G",
+  "PIE",
+  "Q",
+  "RSE",
+  "RET",
+  "SIM",
+  "TCH",
+  "ARG",
+  "PTH",
+  "PLE",
+  "PLW",
+  "PLC",
+  "FLY",
+  "NPY",
+  "RUF",
+]
+ignore = [
+  "E111",
+  "E114",
+  "B027",
+  "N802",
+  "RUF067",
+]
+fixable = ["ALL"]
+unfixable = []
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+  "ANN",
+  "D",
+  "PLC2701",
+  "PLR2004",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ty.rules]
+division-by-zero = "error"
+possibly-missing-import = "error"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

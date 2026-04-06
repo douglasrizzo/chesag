@@ -1,3 +1,5 @@
+"""Logging configuration for the package."""
+
 import logging
 import logging.handlers
 from pathlib import Path
@@ -30,5 +32,6 @@ logger.addHandler(ch)
 logger.addHandler(fh)
 
 
-def get_logger():
+def get_logger() -> logging.Logger:
+  """Return the shared package logger."""
   return logger

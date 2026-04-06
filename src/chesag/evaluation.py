@@ -1,3 +1,5 @@
+"""Board evaluation helpers."""
+
 from collections.abc import Iterable
 
 import chess
@@ -60,13 +62,13 @@ def evaluate(
   use_king_safety: bool = True,
   use_mobility: bool = True,
 ) -> float:
-  """
-  Evaluate board from perspective_color's point of view.
+  """Evaluate board from `perspective_color`'s point of view.
+
   Positive = good for perspective_color, Negative = good for opponent.
 
   Toggle components with flags to trade strength for speed.
 
-  Notes
+  Notes:
   -----
   - If both `use_center_basic` and `use_center_extended` are True, `use_center_extended` wins
     (to avoid double-counting).
@@ -104,8 +106,8 @@ def evaluate(
 
 
 def quick_evaluate(board: Board, perspective_color: bool) -> float:
-  """
-  Very fast evaluation (few loops / no heavy queries).
+  """Return a very fast evaluation for move ordering.
+
   Good for move ordering or quiescence standing-pat.
 
   Components:
@@ -130,6 +132,7 @@ def quick_evaluate(board: Board, perspective_color: bool) -> float:
 
 # --- Feature functions ---
 def material_balance(board: Board, perspective_color: bool) -> float:
+  """Return material balance from the requested perspective."""
   score = 0
   for piece_type, value in PIECE_VALUES.items():
     score += value * len(board.pieces(piece_type, chess.WHITE))
@@ -138,6 +141,7 @@ def material_balance(board: Board, perspective_color: bool) -> float:
 
 
 def bishop_pair_bonus(board: Board, perspective_color: bool) -> float:
+  """Return the bishop-pair bonus from the requested perspective."""
   score = 0
   if len(board.pieces(chess.BISHOP, chess.WHITE)) >= 2:
     score += BISHOP_PAIR_BONUS
@@ -147,6 +151,7 @@ def bishop_pair_bonus(board: Board, perspective_color: bool) -> float:
 
 
 def passed_pawn_score(board: Board, perspective_color: bool) -> float:
+  """Return the passed-pawn bonus from the requested perspective."""
   score = 0.0
   for pawn_square in board.pieces(chess.PAWN, chess.WHITE):
     if is_passed_pawn(board, pawn_square, chess.WHITE):
@@ -174,6 +179,7 @@ def is_passed_pawn(board: Board, square: chess.Square, color: bool) -> bool:
 
 
 def center_control(board: Board, perspective_color: bool, squares: Iterable[chess.Square]) -> float:
+  """Score control of the supplied central squares."""
   w = sum(len(board.attackers(chess.WHITE, sq)) for sq in squares)
   b = sum(len(board.attackers(chess.BLACK, sq)) for sq in squares)
   score = (w - b) * CENTER_CONTROL_WEIGHT
@@ -181,6 +187,7 @@ def center_control(board: Board, perspective_color: bool, squares: Iterable[ches
 
 
 def king_safety(board: Board, perspective_color: bool) -> float:
+  """Score king safety from the requested perspective."""
   score = 0.0
   king_square_white = board.king(chess.WHITE)
   king_square_black = board.king(chess.BLACK)
@@ -205,6 +212,7 @@ def king_safety(board: Board, perspective_color: bool) -> float:
 
 
 def open_file_and_shield_penalty(board: Board, king_square: chess.Square, color: bool) -> float:
+  """Score open files and pawn shield quality around one king."""
   score = 0.0
   king_file = chess.square_file(king_square)
 
@@ -229,6 +237,7 @@ def open_file_and_shield_penalty(board: Board, king_square: chess.Square, color:
 
 
 def mobility_score(board: Board, perspective_color: bool) -> float:
+  """Score relative mobility from the requested perspective."""
   # Save current turn
   saved_turn = board.turn
 
@@ -248,6 +257,7 @@ def mobility_score(board: Board, perspective_color: bool) -> float:
 
 
 def mvv_lva_score(board: Board, move: Move) -> float:
+  """Score captures using the MVV-LVA heuristic."""
   if not board.is_capture(move):
     return 0
 

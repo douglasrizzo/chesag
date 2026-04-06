@@ -1,3 +1,7 @@
+"""MCTS agent and configuration."""
+
+from __future__ import annotations
+
 from chess import Board, Move
 
 from chesag.agents import BaseAgent
@@ -20,7 +24,8 @@ class MCTSConfig:
     rollouts_per_leaf: int = 4,
     use_pruning: bool = True,
     resign_threshold: float | None = None,
-  ):
+  ) -> None:
+    """Initialize the MCTS configuration."""
     self.num_simulations = num_simulations
     self.c_puct = c_puct
     self.parallel = parallel
@@ -47,20 +52,37 @@ class MCTSAgent(BaseAgent):
   by building a search tree and using simulations to evaluate positions.
   """
 
-  def __init__(self, config: MCTSConfig | None = None, **kwargs) -> None:
+  def __init__(
+    self,
+    config: MCTSConfig | None = None,
+    *,
+    num_simulations: int = 100,
+    c_puct: float = 1.4,
+    parallel: bool = True,
+    num_workers: int | None = None,
+    rollouts_per_leaf: int = 4,
+    use_pruning: bool = True,
+    resign_threshold: float | None = None,
+  ) -> None:
     """Initialize the MCTS agent.
 
     Parameters
     ----------
     config : MCTSConfig | None, optional
         MCTS configuration object, by default None (uses default config)
-    **kwargs
-        Configuration parameters if config is not provided
     """
     if config is None:
-      config = MCTSConfig(**kwargs)
+      config = MCTSConfig(
+        num_simulations=num_simulations,
+        c_puct=c_puct,
+        parallel=parallel,
+        num_workers=num_workers,
+        rollouts_per_leaf=rollouts_per_leaf,
+        use_pruning=use_pruning,
+        resign_threshold=resign_threshold,
+      )
     self.config = config
-    self.mcts_searcher = MCTSSearcher()
+    self.mcts_searcher = MCTSSearcher(use_pruning=self.config.use_pruning)
 
   def get_move(self, board: Board) -> Move:
     """Get the best move for the current board position using MCTS."""
@@ -74,7 +96,8 @@ class MCTSAgent(BaseAgent):
     self.mcts_searcher.search(root, self.config.num_simulations, self.config.c_puct)
     return self.mcts_searcher.get_best_child(root)[0]
 
-  def close(self):
+  def close(self) -> None:
+    """Persist any MCTS cache state before shutdown."""
     self.mcts_searcher.save_cache()
     logger.info("Closing MCTSAgent, transposition table saved")
 

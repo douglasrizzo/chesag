@@ -1,3 +1,5 @@
+"""MCTS tree node implementation."""
+
 from __future__ import annotations
 
 import math
@@ -20,6 +22,7 @@ class Node:
   """A node in the Monte Carlo Tree Search tree."""
 
   def __init__(self, parent: Node | None = None, move: Move | None = None, board: Board | None = None) -> None:
+    """Initialize a node from either a parent/move pair or a board copy."""
     assert parent is not None or board is not None, "Either parent or board must be provided"
     self.parent = parent
     self.move = move
@@ -46,6 +49,7 @@ class Node:
 
   @property
   def action_value(self) -> float:
+    """Return the average value accumulated at this node."""
     if self.visits == 0:
       raise ValueError("Node has not been visited yet")
     return self.value / self.visits
@@ -96,6 +100,9 @@ class Node:
     best_child = None
 
     for child in self.children:
+      if child.visits == 0 or child.move is None:
+        continue
+
       exploitation = child.value / child.visits
       raw = self.move_prioritizer.evaluate_move(child.move, self.board)
       # smooth squash

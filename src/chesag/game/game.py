@@ -1,3 +1,5 @@
+"""Core game loop implementation."""
+
 import time
 
 import chess
@@ -75,6 +77,7 @@ class Game:
       if hasattr(winner_agent, "win_by_resignation"):
         winner_agent.win_by_resignation(self.board)
     else:
+      assert outcome is not None
       result = outcome.result()
       termination_reason = outcome.termination.name
 
@@ -93,6 +96,8 @@ class Game:
     """Request the given color's agent to make a move and update the board."""
     agent = self.white_agent if color == chess.WHITE else self.black_agent
     move = agent.get_move(self.board)
+    if not move:
+      return move
     self.board.push(move)
 
     if self.viewer is not None:

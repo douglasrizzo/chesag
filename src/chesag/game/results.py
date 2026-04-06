@@ -1,3 +1,5 @@
+"""Game result modeling."""
+
 from dataclasses import dataclass
 
 
@@ -63,10 +65,7 @@ class GameResult:
         winner_agent = self.player2_agent
       result_str = f"Player {winner_player}/{winner_color}/{winner_agent} wins"
     else:
-      if self.result == "1/2-1/2":
-        result_str = "Draw"
-      else:
-        result_str = "Unfinished"
+      result_str = "Draw" if self.result == "1/2-1/2" else "Unfinished"
       result_str += f" - P1 ({self.player1_agent}) as {self.player1_color}"
 
     return f"{result_str}, {self.moves} moves, {self.duration:.1f}s - {self.termination_reason}"
