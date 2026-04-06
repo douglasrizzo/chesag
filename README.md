@@ -2,6 +2,8 @@
 
 This project contains a collection of chess-playing agents written in Python.
 
+Source layout: `src/chesag`
+
 Implemented features:
 
 - Random agent
@@ -24,10 +26,16 @@ To do list:
 
 ## Installation
 
-Create the virtualenv:
+Install runtime dependencies:
 
 ```sh
 uv sync
+```
+
+Install development dependencies:
+
+```sh
+uv sync --group dev
 ```
 
 This project depends on Qt6. Make sure the version you have installed on your OS matches PyQt6 inside the virtualenv. E.g. if you have Qt 6.10.1 installed, just do the following to sync the dependencies:
@@ -36,28 +44,36 @@ This project depends on Qt6. Make sure the version you have installed on your OS
 uv add pyqt6==6.10.1
 ```
 
-## Usage
+## Tooling
 
-Start the virtualenv:
+Run the local quality checks with:
 
 ```sh
-source .venv/bin/activate
+uv run ruff check --fix
+uv run ruff format
+uv run ty check
+uv run pytest
+uv run pre-commit run --all-files
 ```
+
+The GitHub Actions workflow runs the same `pre-commit` hooks on pull requests.
+
+## Usage
 
 Run the entrypoint script:
 
 ```sh
-python main.py -h
+uv run chesag -h
 ```
 
 Run 100 games between minimax and MCTS agents:
 
 ```sh
-python main.py play minimax --player2 mcts --games 100
+uv run chesag play minimax --player2 mcts --games 100
 ```
 
-Run 100 self-play games of the MCTS agent. It will fill the same transposition table 
+Run 100 self-play games of the MCTS agent. It will fill the same transposition table
 
 ```sh
-python main.py play minimax --player2 mcts --games 100
+uv run chesag play mcts --games 100
 ```

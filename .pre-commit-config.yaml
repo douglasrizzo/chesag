@@ -1,0 +1,39 @@
+exclude: ^\.zed/
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: check-ast
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: check-docstring-first
+      - id: check-yaml
+      - id: check-toml
+      - id: check-xml
+      - id: check-json
+      - id: pretty-format-json
+        args:
+          - "--autofix"
+  - repo: https://github.com/JelleZijlstra/autotyping
+    rev: 24.9.0
+    hooks:
+      - id: autotyping
+        stages: [pre-commit]
+        types: [python]
+        args: [--safe]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.9
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+  - repo: https://github.com/hukkin/mdformat
+    rev: 1.0.0
+    hooks:
+      - id: mdformat
+        additional_dependencies:
+          - mdformat-gfm
+          - mdformat-toc
