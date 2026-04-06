@@ -21,3 +21,43 @@ To do list:
 - Store played games in PGN format
 - Parallel search in MCTS
 - Approximate MCTS results with neural networks
+
+## Installation
+
+Create the virtualenv:
+
+```sh
+uv sync
+```
+
+This project depends on Qt6. Make sure the version you have installed on your OS matches PyQt6 inside the virtualenv. E.g. if you have Qt 6.10.1 installed, just do the following to sync the dependencies:
+
+```sh
+uv add pyqt6==6.10.1
+```
+
+## Usage
+
+Start the virtualenv:
+
+```sh
+source .venv/bin/activate
+```
+
+Run the entrypoint script:
+
+```sh
+python main.py -h
+```
+
+Run 100 games between minimax and MCTS agents:
+
+```sh
+python main.py play minimax --player2 mcts --games 100
+```
+
+Run 100 self-play games of the MCTS agent. It will fill the same transposition table 
+
+```sh
+python main.py play minimax --player2 mcts --games 100
+```

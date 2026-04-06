@@ -8,6 +8,6 @@ dependencies = [
   "cachetools>=6.1.0",
   "chess>=1.11.2",
   "numpy>=2.3.2",
-  "pyqt6>=6.9.1",
+  "pyqt6==6.10.1",
   "tqdm>=4.67.1",
 ]
