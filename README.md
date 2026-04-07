@@ -77,3 +77,17 @@ Run 100 self-play games of the MCTS agent. It will fill the same transposition t
 ```sh
 uv run chesag play mcts --games 100
 ```
+
+## Benchmarks And Smoke Checks
+
+The repo includes lightweight local validation helpers for the search plans:
+
+```sh
+uv run chesag-bench eval --iterations 200
+uv run chesag-bench minimax --depth 3 --repetitions 2
+uv run chesag-bench mcts --simulations 100 --repetitions 2
+uv run chesag-bench smoke minimax random --games 2
+```
+
+These commands expose evaluation-tier counters, minimax node/TT stats, MCTS cache usage, and
+small smoke-match summaries without adding heavyweight benchmark dependencies.
