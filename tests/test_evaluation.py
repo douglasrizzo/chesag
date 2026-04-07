@@ -1,7 +1,9 @@
+from collections.abc import Callable
+
 import chess
 import pytest
 
-from chesag.evaluation import evaluate, material_balance
+from chesag.evaluation import evaluate, leaf_evaluate, material_balance, order_evaluate, rollout_evaluate
 
 
 def test_start_position_evaluates_symmetrically() -> None:
@@ -27,3 +29,13 @@ def test_checkmate_evaluation_uses_perspective_sign() -> None:
   assert board.is_checkmate()
   assert evaluate(board, chess.WHITE) == float("-inf")
   assert evaluate(board, chess.BLACK) == float("inf")
+
+
+@pytest.mark.parametrize("evaluator", [leaf_evaluate, order_evaluate, rollout_evaluate])
+def test_all_eval_tiers_flip_with_perspective(evaluator: Callable[[chess.Board, bool], float]) -> None:
+  board = chess.Board("4k3/8/8/8/3Q4/8/8/4K3 b - - 0 1")
+
+  white_score = evaluator(board, chess.WHITE)
+  black_score = evaluator(board, chess.BLACK)
+
+  assert white_score == pytest.approx(-black_score)
