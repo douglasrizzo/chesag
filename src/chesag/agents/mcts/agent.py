@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 from chess import Board, Move
 
 from chesag.agents import BaseAgent
@@ -13,44 +15,50 @@ logger = get_logger()
 
 
 class MCTSConfig:
-  """Configuration class for MCTS parameters."""
+  """Configuration for the live MCTS behavior."""
 
   def __init__(
     self,
     num_simulations: int = 100,
     c_puct: float = 1.4,
-    parallel: bool = True,
-    num_workers: int | None = None,
-    rollouts_per_leaf: int = 4,
-    use_pruning: bool = True,
+    use_transposition_table: bool = True,
     resign_threshold: float | None = None,
+    *,
+    parallel: bool | None = None,
+    num_workers: int | None = None,
+    rollouts_per_leaf: int | None = None,
+    use_pruning: bool | None = None,
   ) -> None:
-    """Initialize the MCTS configuration."""
+    """Initialize the MCTS configuration.
+
+    Deprecated knobs are accepted for compatibility, but only live options are stored.
+    """
+    if parallel is not None or num_workers is not None or rollouts_per_leaf is not None:
+      warnings.warn(
+        "parallel, num_workers, and rollouts_per_leaf are no longer supported and are ignored",
+        DeprecationWarning,
+        stacklevel=2,
+      )
+    if use_pruning is not None:
+      warnings.warn(
+        "use_pruning is deprecated; use use_transposition_table instead",
+        DeprecationWarning,
+        stacklevel=2,
+      )
+      use_transposition_table = use_pruning
+
     self.num_simulations = num_simulations
     self.c_puct = c_puct
-    self.parallel = parallel
-    self.num_workers = num_workers
-    self.rollouts_per_leaf = rollouts_per_leaf
-    self.use_pruning = use_pruning
+    self.use_transposition_table = use_transposition_table
     self.resign_threshold = min(resign_threshold, -resign_threshold) if resign_threshold is not None else float("-inf")
 
   def __str__(self) -> str:
-    """Return a string representation of the config."""
-    pruning_str = f", pruning={self.use_pruning}"
-    if self.parallel:
-      return f"sims={self.num_simulations}, c_puct={self.c_puct}{pruning_str}"
-    return (
-      f"sims={self.num_simulations}, c_puct={self.c_puct}, "
-      f"parallel={self.parallel}, workers={self.num_workers}{pruning_str}"
-    )
+    """Return a concise string representation of the config."""
+    return f"sims={self.num_simulations}, c_puct={self.c_puct}, tt={self.use_transposition_table}"
 
 
 class MCTSAgent(BaseAgent):
-  """Monte Carlo Tree Search agent for chess.
-
-  This agent uses Monte Carlo Tree Search (MCTS) algorithm to select moves
-  by building a search tree and using simulations to evaluate positions.
-  """
+  """Monte Carlo Tree Search agent for chess."""
 
   def __init__(
     self,
@@ -58,38 +66,34 @@ class MCTSAgent(BaseAgent):
     *,
     num_simulations: int = 100,
     c_puct: float = 1.4,
-    parallel: bool = True,
-    num_workers: int | None = None,
-    rollouts_per_leaf: int = 4,
-    use_pruning: bool = True,
+    use_transposition_table: bool = True,
     resign_threshold: float | None = None,
+    parallel: bool | None = None,
+    num_workers: int | None = None,
+    rollouts_per_leaf: int | None = None,
+    use_pruning: bool | None = None,
   ) -> None:
-    """Initialize the MCTS agent.
-
-    Parameters
-    ----------
-    config : MCTSConfig | None, optional
-        MCTS configuration object, by default None (uses default config)
-    """
+    """Initialize the MCTS agent."""
     if config is None:
       config = MCTSConfig(
         num_simulations=num_simulations,
         c_puct=c_puct,
+        use_transposition_table=use_transposition_table,
+        resign_threshold=resign_threshold,
         parallel=parallel,
         num_workers=num_workers,
         rollouts_per_leaf=rollouts_per_leaf,
         use_pruning=use_pruning,
-        resign_threshold=resign_threshold,
       )
     self.config = config
-    self.mcts_searcher = MCTSSearcher(use_pruning=self.config.use_pruning)
+    self.mcts_searcher = MCTSSearcher(use_transposition_table=self.config.use_transposition_table)
 
   def get_move(self, board: Board) -> Move:
     """Get the best move for the current board position using MCTS."""
     if material_balance(board, board.turn) < self.config.resign_threshold:
       return Move.null()
     move_and_eval = self.mcts_searcher.should_return_single_move(board)
-    if move_and_eval:
+    if move_and_eval is not None:
       return move_and_eval[0]
 
     root = self.mcts_searcher.create_root_node(board)
