@@ -38,7 +38,8 @@ class HeuristicMovePrioritizer:
     """Order moves using cheap tactical and learned heuristics."""
     return sorted(moves, key=lambda move: self.score_move(board, move, depth=depth, tt_move=tt_move), reverse=True)
 
-  def evaluate_move(self, move: Move, board: Board) -> float:
+  @staticmethod
+  def evaluate_move(move: Move, board: Board) -> float:
     """Return a cheap static score for a single move."""
     board.push(move)
     try:

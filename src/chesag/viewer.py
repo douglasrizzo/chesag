@@ -58,7 +58,8 @@ class ChessWindow(QWidget):
 
   # ---- helpers ---------------------------------------------------------
 
-  def _status_text(self, board: chess.Board) -> str:
+  @staticmethod
+  def _status_text(board: chess.Board) -> str:
     """Build a compact status line: whose turn, move number, material, and check flag."""
     if board.is_game_over():
       result = board.result()

@@ -3,7 +3,7 @@
 from chess import Board, Move
 from numpy.random import default_rng
 
-from chesag.agents import BaseAgent
+from chesag.agents.base import BaseAgent
 from chesag.evaluation import material_balance
 
 

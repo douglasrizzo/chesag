@@ -6,7 +6,7 @@ import warnings
 
 from chess import Board, Move
 
-from chesag.agents import BaseAgent
+from chesag.agents.base import BaseAgent
 from chesag.agents.mcts.algorithm import MCTSSearcher
 from chesag.evaluation import material_balance
 from chesag.logging import get_logger

@@ -5,7 +5,7 @@ import contextlib
 import chess
 import chess.engine
 
-from chesag.agents import BaseAgent
+from chesag.agents.base import BaseAgent
 
 
 class StockfishAgent(BaseAgent):

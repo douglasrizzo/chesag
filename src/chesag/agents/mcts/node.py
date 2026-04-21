@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-import random
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -18,6 +17,8 @@ if TYPE_CHECKING:
 class Node:
   """A node in the Monte Carlo Tree Search tree."""
 
+  rollout_rng = np.random.default_rng()
+
   def __init__(
     self,
     *,
@@ -28,7 +29,9 @@ class Node:
     prior: float = 0.0,
   ) -> None:
     """Initialize a node from either a parent/move pair or a board copy."""
-    assert parent is not None or board is not None, "Either parent or board must be provided"
+    if parent is None and board is None:
+      msg = "Either parent or board must be provided"
+      raise ValueError(msg)
     self.parent = parent
     self.move = move
     self.move_prioritizer = move_prioritizer or HeuristicMovePrioritizer()
@@ -40,8 +43,6 @@ class Node:
       self.board = parent.board.copy()
       if move is not None:
         self.board.push(move)
-    else:
-      raise ValueError("Either parent or board must be provided")
 
     self.children: list[Node] = []
     self.visits = 0
@@ -116,7 +117,8 @@ class Node:
   def select_child(self, c_puct: float) -> Node:
     """Select a child using one consistent PUCT formula."""
     if not self.children:
-      raise ValueError("Cannot select child from node with no children")
+      msg = "Cannot select child from node with no children"
+      raise ValueError(msg)
 
     parent_scale = math.sqrt(max(self.visits, 1))
     return max(
@@ -129,6 +131,7 @@ class Node:
     rollout_board = self.board.copy()
     perspective_color = rollout_board.turn
     max_rollout_moves = 24
+    decisive_rollout_score = 8.0
 
     for _ in range(max_rollout_moves):
       if rollout_board.is_game_over():
@@ -141,12 +144,13 @@ class Node:
       rollout_board.push(move)
 
       eval_score = rollout_evaluate(rollout_board, perspective_color)
-      if abs(eval_score) >= 8.0:
+      if abs(eval_score) >= decisive_rollout_score:
         break
 
     return leaf_evaluate(rollout_board, perspective_color)
 
-  def _select_rollout_move(self, board: Board, legal_moves: list[Move]) -> Move:
+  @staticmethod
+  def _select_rollout_move(board: Board, legal_moves: list[Move]) -> Move:
     weights = []
     mover = board.turn
     for move in legal_moves:
@@ -160,12 +164,14 @@ class Node:
     if np.isinf(move_weights).any():
       return legal_moves[int(np.isinf(move_weights).argmax())]
     if np.allclose(move_weights, move_weights[0]):
-      return random.choice(legal_moves)
+      random_index = int(Node.rollout_rng.integers(0, len(legal_moves)))
+      return legal_moves[random_index]
     if move_weights.min() <= 0:
       move_weights = move_weights - move_weights.min() + 1e-6
 
     normalized_weights = move_weights / move_weights.sum()
-    return random.choices(legal_moves, weights=normalized_weights.tolist(), k=1)[0]
+    chosen_index = int(Node.rollout_rng.choice(len(legal_moves), p=normalized_weights))
+    return legal_moves[chosen_index]
 
   def backpropagate(self, result: float) -> None:
     """Backpropagate a side-to-move score up the tree, alternating perspective."""

@@ -25,6 +25,8 @@ PAWN_SHIELD_PENALTY = -0.1
 MOVE_CAPTURE_WEIGHT = 0.1
 MOVE_CHECK_BONUS = 0.3
 MOBILITY_WEIGHT = 0.05
+BISHOP_PAIR_COUNT = 2
+BOARD_EDGE_INDEX = 7
 
 CENTER4 = (chess.D4, chess.E4, chess.D5, chess.E5)
 EXTENDED_CENTER = {
@@ -214,9 +216,9 @@ def material_balance(board: Board, perspective_color: bool) -> float:
 def bishop_pair_bonus(board: Board, perspective_color: bool) -> float:
   """Return the bishop-pair bonus from the requested perspective."""
   score = 0.0
-  if len(board.pieces(chess.BISHOP, chess.WHITE)) >= 2:
+  if len(board.pieces(chess.BISHOP, chess.WHITE)) >= BISHOP_PAIR_COUNT:
     score += BISHOP_PAIR_BONUS
-  if len(board.pieces(chess.BISHOP, chess.BLACK)) >= 2:
+  if len(board.pieces(chess.BISHOP, chess.BLACK)) >= BISHOP_PAIR_COUNT:
     score -= BISHOP_PAIR_BONUS
   return score if perspective_color == chess.WHITE else -score
 
@@ -244,7 +246,7 @@ def is_passed_pawn(board: Board, square: chess.Square, color: bool) -> bool:
 
   for next_rank in range(rank + direction, 8 if color == chess.WHITE else -1, direction):
     for next_file in (file - 1, file, file + 1):
-      if 0 <= next_file <= 7 and chess.square(next_file, next_rank) in enemy_pawns:
+      if 0 <= next_file <= BOARD_EDGE_INDEX and chess.square(next_file, next_rank) in enemy_pawns:
         return False
   return True
 
@@ -285,7 +287,7 @@ def open_file_and_shield_penalty(board: Board, king_square: chess.Square, color:
   king_file = chess.square_file(king_square)
 
   for file_idx in (king_file - 1, king_file, king_file + 1):
-    if 0 <= file_idx <= 7:
+    if 0 <= file_idx <= BOARD_EDGE_INDEX:
       file_squares = [chess.square(file_idx, rank) for rank in range(8)]
       if not any(
         board.piece_type_at(square) == chess.PAWN and board.color_at(square) == color for square in file_squares
@@ -294,9 +296,9 @@ def open_file_and_shield_penalty(board: Board, king_square: chess.Square, color:
 
   forward = 1 if color == chess.WHITE else -1
   target_rank = chess.square_rank(king_square) + forward
-  if 0 <= target_rank <= 7:
+  if 0 <= target_rank <= BOARD_EDGE_INDEX:
     for file_idx in (king_file - 1, king_file, king_file + 1):
-      if 0 <= file_idx <= 7:
+      if 0 <= file_idx <= BOARD_EDGE_INDEX:
         square = chess.square(file_idx, target_rank)
         if board.piece_type_at(square) != chess.PAWN or board.color_at(square) != color:
           score += PAWN_SHIELD_PENALTY

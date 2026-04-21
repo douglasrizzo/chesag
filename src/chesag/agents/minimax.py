@@ -114,6 +114,11 @@ class MinimaxAgent(BaseAgent):
     logger.log(MORE_INFO, "Search results: %s", self.last_search.as_dict())
     return best_move
 
+  @property
+  def transposition_table_size(self) -> int:
+    """Return the current transposition-table size."""
+    return len(self._tt)
+
   def _negamax(self, board: Board, depth: int, alpha: float, beta: float, *, ply: int) -> float:
     """Return the score from the current side-to-move perspective."""
     key = build_position_key(board)

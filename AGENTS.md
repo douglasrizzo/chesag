@@ -25,6 +25,7 @@ uv run chesag play minimax --player2 mcts --games 2
 
 - Lint with `uv run ruff check --fix`.
 - Format with `uv run ruff format`.
+- Pylint with `uv run pylint src/chesag` — covers LSP violations, class design metrics, and duplicate-code detection that Ruff does not.
 - Type-check with `uv run ty check`.
 - Run hooks with `uv run pre-commit run --all-files`.
 - Run tests with `uv run pytest`.
@@ -32,6 +33,7 @@ uv run chesag play minimax --player2 mcts --games 2
   - `ruff check --fix` first, so automatic fixes land before manual cleanup
   - `ruff format`
   - `ruff check`
+  - `pylint src/chesag`
   - `ty check` for touched Python modules when practical
   - `pytest` for any covered behavior or new tests
 - Keep behavioral changes separate from broad lint cleanup unless the phase explicitly targets cleanup.
@@ -54,7 +56,7 @@ uv run chesag play minimax --player2 mcts --games 2
 ## Working Rules
 
 - Prefer `rg` for searches and `uv run chesag ...` for CLI execution.
-- Prefer `uv run ruff check --fix`, `uv run ruff format`, `uv run ty check`, and `uv run pytest` over ad hoc alternatives.
+- Prefer `uv run ruff check --fix`, `uv run ruff format`, `uv run pylint src/chesag`, `uv run ty check`, and `uv run pytest` over ad hoc alternatives.
 - Use `ruff` auto-fixes before making manual style-only edits.
 - Use `python-chess` semantics carefully. `Move.null()` is not the same as “no move”; pushing it mutates the board.
 - Treat move-evaluation sign conventions as high risk. Verify perspective handling whenever touching minimax, MCTS, or resignation logic.

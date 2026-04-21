@@ -2,8 +2,10 @@ from collections.abc import Callable
 
 import chess
 import pytest
+from hypothesis import example, given
 
 from chesag.evaluation import evaluate, leaf_evaluate, material_balance, order_evaluate, rollout_evaluate
+from tests.hypothesis_strategies import legal_boards
 
 
 def test_start_position_evaluates_symmetrically() -> None:
@@ -35,6 +37,28 @@ def test_checkmate_evaluation_uses_perspective_sign() -> None:
 def test_all_eval_tiers_flip_with_perspective(evaluator: Callable[[chess.Board, bool], float]) -> None:
   board = chess.Board("4k3/8/8/8/3Q4/8/8/4K3 b - - 0 1")
 
+  white_score = evaluator(board, chess.WHITE)
+  black_score = evaluator(board, chess.BLACK)
+
+  assert white_score == pytest.approx(-black_score)
+
+
+@given(legal_boards(max_plies=24))
+@example(chess.Board())
+def test_material_balance_is_perspective_symmetric(board: chess.Board) -> None:
+  white_score = material_balance(board, chess.WHITE)
+  black_score = material_balance(board, chess.BLACK)
+
+  assert white_score == pytest.approx(-black_score)
+
+
+@pytest.mark.parametrize("evaluator", [evaluate, leaf_evaluate, order_evaluate, rollout_evaluate])
+@given(legal_boards(max_plies=24))
+@example(chess.Board())
+def test_evaluators_remain_perspective_symmetric(
+  evaluator: Callable[[chess.Board, bool], float],
+  board: chess.Board,
+) -> None:
   white_score = evaluator(board, chess.WHITE)
   black_score = evaluator(board, chess.BLACK)
 

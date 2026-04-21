@@ -1,6 +1,9 @@
 import chess
+from hypothesis import example, given
 
 from chesag.move_priority import HeuristicMovePrioritizer
+from chesag.position_key import build_position_key
+from tests.hypothesis_strategies import legal_boards
 
 
 def test_tt_move_is_ranked_first() -> None:
@@ -43,3 +46,23 @@ def test_history_heuristic_breaks_quiet_move_ties() -> None:
   ordered = prioritizer.order_moves(board, moves, depth=1)
 
   assert ordered[0] == chess.Move.from_uci("h2h3")
+
+
+@given(legal_boards(min_plies=1, max_plies=24))
+@example(chess.Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"))
+def test_evaluate_move_does_not_mutate_board(board: chess.Board) -> None:
+  prioritizer = HeuristicMovePrioritizer()
+  legal_moves = list(board.legal_moves)
+  if not legal_moves:
+    return
+
+  move = legal_moves[0]
+  original_fen = board.fen()
+  original_key = build_position_key(board)
+  original_stack = list(board.move_stack)
+
+  prioritizer.evaluate_move(move, board)
+
+  assert board.fen() == original_fen
+  assert build_position_key(board) == original_key
+  assert list(board.move_stack) == original_stack

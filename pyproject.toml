@@ -22,7 +22,10 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+  "hypothesis>=6",
+  "mutmut>=3.5",
   "pre-commit>=4.5.0",
+  "pylint>=4",
   "pytest>=8.4.0",
   "ruff>=0.15.0",
   "ty>=0.0.1a13",
@@ -47,13 +50,17 @@ select = [
   "ANN",
   "B",
   "A",
+  "BLE",
   "C4",
+  "C90",
+  "EM",
   "EXE",
   "G",
   "PIE",
   "Q",
   "RSE",
   "RET",
+  "SLF",
   "SIM",
   "TCH",
   "ARG",
@@ -61,16 +68,28 @@ select = [
   "PLE",
   "PLW",
   "PLC",
+  "PLR01",
+  "PLR02",
+  "PLR04",
+  "PLR1",
+  "PLR2",
+  "PLR5",
+  "PLR6",
   "FLY",
   "NPY",
+  "PERF",
+  "FURB",
+  "S",
   "RUF",
 ]
 ignore = [
+  "ANN401",
   "E111",
   "E114",
   "B027",
   "N802",
   "RUF067",
+  "S101",
 ]
 fixable = ["ALL"]
 unfixable = []
@@ -79,13 +98,23 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
   "ANN",
+  "ARG005",
   "D",
   "PLC2701",
   "PLR2004",
+  "PLR6301",
+  "RUF069",
+  "S",
+  "SLF001",
+  "TC001",
+  "TC003",
 ]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
 
 [tool.ruff.format]
 quote-style = "double"
@@ -99,3 +128,68 @@ possibly-missing-import = "error"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+# ---------------------------------------------------------------------------
+# mutmut
+# ---------------------------------------------------------------------------
+[tool.mutmut]
+paths_to_mutate = [
+  "src/chesag/agents/minimax.py",
+  "src/chesag/evaluation.py",
+  "src/chesag/move_priority.py",
+]
+also_copy = ["src/chesag"]
+do_not_mutate = [
+  "*/__init__.py",
+  "src/chesag/cli.py",
+  "src/chesag/viewer.py",
+  "src/chesag/replay.py",
+  "src/chesag/benchmarks.py",
+]
+max_stack_depth = 8
+
+# ---------------------------------------------------------------------------
+# Pylint
+# ---------------------------------------------------------------------------
+[tool.pylint.messages-control]
+enable = [
+  "duplicate-code",
+  "too-many-ancestors",
+  "too-many-instance-attributes",
+  "arguments-differ",
+  "signature-differs",
+  "arguments-renamed",
+  "invalid-overridden-method",
+  "overridden-final-method",
+  "subclassed-final-class",
+  "attribute-defined-outside-init",
+  "super-init-not-called",
+  "non-parent-init-called",
+  "useless-parent-delegation",
+  "unused-private-member",
+  "redefined-slots-in-subclass",
+  "bad-classmethod-argument",
+  "bad-mcs-method-argument",
+  "no-classmethod-decorator",
+  "no-staticmethod-decorator",
+  "bad-except-order",
+  "duplicate-except",
+  "return-in-finally",
+  "lost-exception",
+  "cyclic-import",
+  "pointless-statement",
+  "duplicate-key",
+  "missing-parentheses-for-call-in-test",
+  "redefined-outer-name",
+]
+disable = ["all"]
+
+[tool.pylint.design]
+max-parents = 7
+max-attributes = 12
+
+[tool.pylint.similarities]
+min-similarity-lines = 10
+ignore-imports = true
+ignore-docstrings = true
+ignore-comments = true

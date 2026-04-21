@@ -27,12 +27,9 @@ class ParallelWorkerManager:
     with ProcessPoolExecutor(max_workers=actual_workers) as executor:
       futures = [executor.submit(worker_func, args) for args in worker_args]
       for future in as_completed(futures):
-        try:
-          result = future.result()
-          if result:
-            results.append(result)
-        except Exception:
-          continue
+        result = future.result()
+        if result:
+          results.append(result)
 
     return results
 

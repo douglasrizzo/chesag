@@ -66,7 +66,7 @@ def benchmark_minimax(fen: str, *, depth: int = 3, repetitions: int = 2) -> Benc
     runs.append({
       "move": move.uci(),
       "search": agent.last_search.as_dict(),
-      "tt_size": len(agent._tt),
+      "tt_size": agent.transposition_table_size,
     })
 
   elapsed = time.perf_counter() - start

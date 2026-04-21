@@ -12,4 +12,12 @@ type PositionKey = tuple[object, ...]
 
 def build_position_key(board: Board) -> PositionKey:
   """Return a compact key that distinguishes all chess state relevant to search."""
-  return cast("PositionKey", board._transposition_key())
+  return cast(
+    "PositionKey",
+    (
+      board.board_fen(),
+      board.turn,
+      board.clean_castling_rights(),
+      board.ep_square,
+    ),
+  )

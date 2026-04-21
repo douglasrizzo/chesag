@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import pickle
+import pickle  # noqa: S403
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -21,6 +21,8 @@ if TYPE_CHECKING:
   from chess import Board, Move
 
 logger = get_logger()
+TRANSPOSITION_TABLE_MAX_SIZE = 500_000
+TT_SCORE_MIN_VISITS = 200
 
 
 @dataclass
@@ -54,15 +56,15 @@ class MCTSSearcher:
     """Load the persisted transposition table if present."""
     if not MCTSSearcher.cache_file.exists():
       logger.info("Cache file not found, creating new cache")
-      return LRUCache(maxsize=500_000)
+      return LRUCache(maxsize=TRANSPOSITION_TABLE_MAX_SIZE)
     try:
       with MCTSSearcher.cache_file.open("rb") as f:
-        cache: LRUCache[Hashable, CachedNode] = pickle.load(f)
+        cache: LRUCache[Hashable, CachedNode] = pickle.load(f)  # noqa: S301
       logger.info("Loaded transposition table with %d entries", len(cache))
       return cache
-    except Exception:
+    except (OSError, EOFError, pickle.UnpicklingError, AttributeError, TypeError, ValueError):
       logger.warning("Cache file could not be loaded; starting with a fresh table")
-      return LRUCache(maxsize=500_000)
+      return LRUCache(maxsize=TRANSPOSITION_TABLE_MAX_SIZE)
 
   def save_cache(self) -> None:
     """Persist the transposition table to disk."""
@@ -76,10 +78,12 @@ class MCTSSearcher:
   def get_legal_moves(board: Board) -> list[Move]:
     """Return legal moves for a non-terminal board."""
     if board.is_game_over():
-      raise ValueError("Cannot search from terminal position")
+      msg = "Cannot search from terminal position"
+      raise ValueError(msg)
     legal_moves = list(board.legal_moves)
     if not legal_moves:
-      raise ValueError("No legal moves available")
+      msg = "No legal moves available"
+      raise ValueError(msg)
     return legal_moves
 
   @staticmethod
@@ -108,7 +112,8 @@ class MCTSSearcher:
     root = Node(board=board.copy(), move_prioritizer=self.move_prioritizer)
     logger.debug("Creating root node")
     if root.expand() is None:
-      raise ValueError("Failed to expand root node")
+      msg = "Failed to expand root node"
+      raise ValueError(msg)
     return root
 
   def single_step(self, root: Node, c_puct: float) -> float:
@@ -137,7 +142,7 @@ class MCTSSearcher:
 
     if self.transposition_table is not None:
       cached = self.transposition_table.get(position_key)
-      if cached is not None and cached.visits >= 200:
+      if cached is not None and cached.visits >= TT_SCORE_MIN_VISITS:
         return cached.score
 
     result = node.rollout()
@@ -174,7 +179,8 @@ class MCTSSearcher:
     candidate_children = visited_children or root.children
     best_child = max(candidate_children, key=lambda child: (child.visits, -child.action_value))
     if best_child is None or best_child.move is None:
-      raise ValueError("No best move found")
+      msg = "No best move found"
+      raise ValueError(msg)
     return best_child.move, best_child.visits, best_child.value
 
   @staticmethod

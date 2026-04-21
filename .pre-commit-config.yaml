@@ -52,3 +52,17 @@ repos:
     hooks:
       - id: check-github-workflows
         args: ["--verbose"]
+  - repo: local
+    hooks:
+      - id: pylint
+        name: pylint
+        entry: uv run pylint src/chesag
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: ty
+        name: ty type check
+        entry: uv run ty check
+        language: system
+        pass_filenames: false
+        always_run: true
