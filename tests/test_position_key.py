@@ -48,6 +48,8 @@ def test_position_key_matches_copied_board(board: chess.Board) -> None:
 
 @given(legal_boards(min_plies=1, max_plies=24))
 def test_position_key_restored_after_push_and_pop(board: chess.Board) -> None:
+  if not board.legal_moves.count():
+    return
   original_key = build_position_key(board)
   original_fen = board.fen()
   move = next(iter(board.legal_moves))
