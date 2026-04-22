@@ -213,3 +213,4 @@ cache/
 *.prof
 
 .DS_Store
+mutants/
